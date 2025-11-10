@@ -40,7 +40,7 @@ const DashboardMejorado = () => {
 
       const decoded = jwtDecode(token);
       
-      console.log("Usuario decodificado:", decoded); // Debug
+      console.log("Usuario decodificado:", decoded);
       
       // Bloquear coordinación
       if (decoded.rol === 'coordinacion') {
@@ -63,23 +63,21 @@ const DashboardMejorado = () => {
       if (!resAlumnos.ok) throw new Error(`Error ${resAlumnos.status}`);
       let data = await resAlumnos.json();
 
-      console.log("Alumnos recibidos del backend:", data.length); // Debug
+      console.log("Alumnos recibidos del backend:", data.length);
 
       // Filtrar por división si es jefe de división
       if (decoded.rol === "jefeDivision" && decoded.division) {
         data = data.filter(alumno => alumno.Carrera === decoded.division);
-        console.log("Alumnos después de filtrar por división:", data.length); // Debug
+        console.log("Alumnos después de filtrar por división:", data.length);
       }
 
-      // Filtrar por tutor si es tutor - SOLO si existe el campo tutor_id
+      // Filtrar por tutor si es tutor
       if (decoded.rol === "tutor" && decoded.id) {
-        // Verificar si los alumnos tienen el campo tutor_id
         if (data.length > 0 && data[0].tutor_id !== undefined) {
           data = data.filter(alumno => alumno.tutor_id === decoded.id);
-          console.log("Alumnos después de filtrar por tutor:", data.length); // Debug
+          console.log("Alumnos después de filtrar por tutor:", data.length);
         } else {
           console.warn("⚠️ El campo 'tutor_id' no existe en la tabla alumnos. Mostrando todos los alumnos.");
-          // Si no existe tutor_id, mostramos todos los alumnos por ahora
         }
       }
 
@@ -103,58 +101,63 @@ const DashboardMejorado = () => {
       if (resEstadisticas.ok) {
         const stats = await resEstadisticas.json();
         setEstadisticas(stats);
-        console.log("Estadísticas recibidas:", stats); // Debug
+        console.log("Estadísticas recibidas:", stats);
       } else {
         console.error("Error al obtener estadísticas:", resEstadisticas.status);
       }
 
-      // Obtener alertas y canalizaciones reales (solo para los primeros 20 alumnos para evitar muchas peticiones)
-      const alumnosParaAlertas = data.slice(0, 20);
-      const alertasTemp = {};
-      const canalizacionesTemp = {};
-      
-      for (const alumno of alumnosParaAlertas) {
-        try {
-          // Obtener alertas del alumno
-          const resAlertas = await fetch(`http://localhost:4000/api/alertas/alumno/${alumno.id}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
+      // ✅ OBTENER TODAS LAS ALERTAS Y CANALIZACIONES DE UNA SOLA VEZ
+      try {
+        // Obtener todas las alertas activas
+        const resAlertasGlobal = await fetch(`http://localhost:4000/api/alertas?estado=activa`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        
+        if (resAlertasGlobal.ok) {
+          const todasLasAlertas = await resAlertasGlobal.json();
+          const alertasTemp = {};
+          
+          todasLasAlertas.forEach(alerta => {
+            if (!alertasTemp[alerta.alumno_id]) {
+              alertasTemp[alerta.alumno_id] = [];
+            }
+            alertasTemp[alerta.alumno_id].push(alerta);
           });
           
-          if (resAlertas.ok) {
-            const alertas = await resAlertas.json();
-            const alertasActivas = alertas.filter(a => a.estado === 'activa');
-            if (alertasActivas.length > 0) {
-              alertasTemp[alumno.id] = alertasActivas;
-            }
-          }
-
-          // Obtener canalizaciones del alumno
-          const resCanalizaciones = await fetch(`http://localhost:4000/api/canalizaciones?alumnoId=${alumno.id}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          });
-          
-          if (resCanalizaciones.ok) {
-            const canalizaciones = await resCanalizaciones.json();
-            const canalizacionesActivas = canalizaciones.filter(
-              c => c.estado === 'pendiente' || c.estado === 'en seguimiento'
-            );
-            if (canalizacionesActivas.length > 0) {
-              canalizacionesTemp[alumno.id] = canalizacionesActivas;
-            }
-          }
-        } catch (error) {
-          console.error(`Error al obtener datos del alumno ${alumno.id}:`, error);
+          setAlertasMap(alertasTemp);
+          console.log("Alertas cargadas:", Object.keys(alertasTemp).length, "alumnos con alertas");
         }
+
+        // Obtener todas las canalizaciones activas
+        const resCanalizacionesGlobal = await fetch(`http://localhost:4000/api/canalizaciones`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        
+        if (resCanalizacionesGlobal.ok) {
+          const todasLasCanalizaciones = await resCanalizacionesGlobal.json();
+          const canalizacionesTemp = {};
+          
+          todasLasCanalizaciones.forEach(canalizacion => {
+            if (canalizacion.estado === 'pendiente' || canalizacion.estado === 'en seguimiento') {
+              if (!canalizacionesTemp[canalizacion.alumno_id]) {
+                canalizacionesTemp[canalizacion.alumno_id] = [];
+              }
+              canalizacionesTemp[canalizacion.alumno_id].push(canalizacion);
+            }
+          });
+          
+          setCanalizacionesMap(canalizacionesTemp);
+          console.log("Canalizaciones cargadas:", Object.keys(canalizacionesTemp).length, "alumnos con canalizaciones");
+        }
+      } catch (error) {
+        console.error("Error al obtener alertas/canalizaciones:", error);
       }
-      
-      setAlertasMap(alertasTemp);
-      setCanalizacionesMap(canalizacionesTemp);
 
     } catch (error) {
       console.error("Error al obtener datos:", error);
@@ -335,23 +338,25 @@ const DashboardMejorado = () => {
             </div>
           </div>
         </div>
-{/* Agregar después de las tarjetas de estadísticas, antes de los filtros */}
-<div className="row mb-4">
-  <div className="col-12">
-    <button
-      className="btn btn-success btn-lg w-100"
-      onClick={() => navigate('/canalizaciones')}
-    >
-      <i className="fas fa-clipboard-list me-2"></i>
-      Ver Mis Canalizaciones
-      {estadisticas.canalizacionesActivas > 0 && (
-        <span className="badge bg-danger ms-2">
-          {estadisticas.canalizacionesActivas}
-        </span>
-      )}
-    </button>
-  </div>
-</div>
+
+        {/* ✅ Botón de Canalizaciones más corto */}
+        <div className="row mb-4">
+          <div className="col-md-6 offset-md-3">
+            <button
+              className="btn btn-success btn-lg w-100"
+              onClick={() => navigate('/canalizaciones')}
+            >
+              <i className="fas fa-clipboard-list me-2"></i>
+              Ver Mis Canalizaciones
+              {estadisticas.canalizacionesActivas > 0 && (
+                <span className="badge bg-danger ms-2">
+                  {estadisticas.canalizacionesActivas}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
         <div className="login-form expanded-form">
           {/* Filtros simplificados - solo búsqueda */}
           <div className="card mb-4 shadow-sm">
@@ -446,7 +451,7 @@ const DashboardMejorado = () => {
               <tbody>
                 {currentAlumnos.length > 0 ? (
                   currentAlumnos.map((alumno) => {
-                    // Usar alertas y canalizaciones reales
+                    // ✅ Usar alertas y canalizaciones del mapa global
                     const tieneAlerta = alertasMap[alumno.id] && alertasMap[alumno.id].length > 0;
                     const tieneCanalizacion = canalizacionesMap[alumno.id] && canalizacionesMap[alumno.id].length > 0;
                     
@@ -463,13 +468,13 @@ const DashboardMejorado = () => {
                         </td>
                         <td className="text-center">
                           {tieneAlerta && (
-                            <span className="badge bg-danger me-1" title="Alumno en riesgo">
-                              <i className="fas fa-exclamation-triangle"></i> Riesgo
+                            <span className="badge bg-danger me-1" title={`${alertasMap[alumno.id].length} alerta(s) activa(s)`}>
+                              <i className="fas fa-exclamation-triangle"></i> Riesgo ({alertasMap[alumno.id].length})
                             </span>
                           )}
                           {tieneCanalizacion && (
-                            <span className="badge bg-info" title="Canalización activa">
-                              <i className="fas fa-clipboard-check"></i> Canalizado
+                            <span className="badge bg-info" title={`${canalizacionesMap[alumno.id].length} canalización(es) activa(s)`}>
+                              <i className="fas fa-clipboard-check"></i> Canalizado ({canalizacionesMap[alumno.id].length})
                             </span>
                           )}
                           {!tieneAlerta && !tieneCanalizacion && (
