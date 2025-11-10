@@ -7,7 +7,7 @@ import { Op } from 'sequelize';
 
 const router = express.Router();
 
-// 🔹 Obtener todos los periodos
+// 📌 Obtener todos los periodos (Ordenados por fecha más reciente)
 router.get('/', verifyToken, async (req, res) => {
   try {
     const periodos = await Periodo.findAll({
@@ -20,7 +20,7 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-// 🔹 Obtener periodo activo
+// 📌 Obtener periodo activo
 router.get('/activo', verifyToken, async (req, res) => {
   try {
     const periodoActivo = await Periodo.findOne({ 
@@ -38,13 +38,20 @@ router.get('/activo', verifyToken, async (req, res) => {
   }
 });
 
-// 🔹 Crear periodo (SOLO COORDINACIÓN)
+// 📌 Crear periodo (SOLO COORDINACIÓN)
 router.post('/', 
   verifyToken, 
   verificarRoles('coordinacion'), 
   async (req, res) => {
     try {
       const { nombre, fecha_inicio, fecha_fin, activo } = req.body;
+
+      // Validar que el nombre no esté vacío
+      if (!nombre || !fecha_inicio || !fecha_fin) {
+        return res.status(400).json({ 
+          error: 'Nombre, fecha de inicio y fecha de fin son requeridos' 
+        });
+      }
 
       // Validar fechas
       if (new Date(fecha_inicio) >= new Date(fecha_fin)) {
@@ -76,7 +83,7 @@ router.post('/',
   }
 );
 
-// 🔹 Activar un periodo (SOLO COORDINACIÓN)
+// 📌 Activar un periodo (SOLO COORDINACIÓN)
 router.put('/:id/activar',
   verifyToken,
   verificarRoles('coordinacion'),
@@ -111,7 +118,7 @@ router.put('/:id/activar',
   }
 );
 
-// 🔹 Actualizar periodo (SOLO COORDINACIÓN)
+// 📌 Actualizar periodo (SOLO COORDINACIÓN)
 router.put('/:id',
   verifyToken,
   verificarRoles('coordinacion'),
@@ -161,7 +168,7 @@ router.put('/:id',
   }
 );
 
-// 🔹 Eliminar periodo (SOLO COORDINACIÓN)
+// 📌 Eliminar periodo (SOLO COORDINACIÓN)
 router.delete('/:id',
   verifyToken,
   verificarRoles('coordinacion'),
@@ -198,6 +205,60 @@ router.delete('/:id',
       res.json({ message: 'Periodo eliminado correctamente' });
     } catch (error) {
       console.error('Error eliminando periodo:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+router.post('/:id/cerrar-periodo',
+  verifyToken,
+  verificarRoles('coordinacion'),
+  async (req, res) => {
+    try {
+      const periodoActualId = req.params.id;
+      const { nombre_nuevo_periodo, fecha_inicio, fecha_fin } = req.body;
+
+      // 1. Obtener periodo actual
+      const periodoActual = await Periodo.findByPk(periodoActualId);
+      
+      if (!periodoActual.activo) {
+        return res.status(400).json({ error: 'Este periodo ya está cerrado' });
+      }
+
+      // 2. Avanzar semestre de TODOS los alumnos asignados
+      const asignaciones = await AlumnoGrupo.findAll({
+        where: { periodo_id: periodoActualId },
+        include: [{ model: Alumno, as: 'alumno' }]
+      });
+
+      let alumnosAvanzados = 0;
+      for (const asignacion of asignaciones) {
+        const alumno = asignacion.alumno;
+        const nuevoSemestre = alumno.Semestre + 1;
+        
+        if (nuevoSemestre <= 12) {
+          await alumno.update({ Semestre: nuevoSemestre });
+          alumnosAvanzados++;
+        }
+      }
+
+      // 3. Desactivar periodo actual
+      periodoActual.activo = false;
+      await periodoActual.save();
+
+      // 4. Crear y activar nuevo periodo
+      const nuevoPeriodo = await Periodo.create({
+        nombre: nombre_nuevo_periodo,
+        fecha_inicio,
+        fecha_fin,
+        activo: true
+      });
+
+      res.json({
+        message: `Periodo cerrado. ${alumnosAvanzados} alumnos avanzaron de semestre`,
+        periodo_cerrado: periodoActual,
+        periodo_nuevo: nuevoPeriodo
+      });
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }

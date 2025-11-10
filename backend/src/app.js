@@ -3,7 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import errorHandler from './middlewares/errorHandler.js';
-import routes from './routes/index.js'; // ✅ Importar el archivo centralizado
+import routes from './routes/index.js';
 
 const app = express();
 
@@ -23,6 +23,7 @@ app.use('/api', routes);
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend funcionando' });
 });
+
 
 // Error handler (debe ir al final)
 app.use(errorHandler);

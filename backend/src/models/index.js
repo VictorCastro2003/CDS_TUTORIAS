@@ -7,9 +7,13 @@ import User from "./user.js";
 import Grupo from "./Grupo.js";
 import AlumnoGrupo from "./alumnoGrupo.js";
 import Periodo from "./Periodo.js";
-import Canalizacion from "./canalizacion.js"; // ✅ AGREGAR ESTA LÍNEA
+import Canalizacion from "./canalizacion.js"; 
+import Alerta from "./alerta.js";
+import Asistencia from "./asistencia.js";
 
-// Relaciones Alumno-Materia
+// ============================================
+// RELACIONES ALUMNO - MATERIA
+// ============================================
 Alumno.belongsToMany(Materia, {
   through: AlumnoMateria,
   foreignKey: 'alumno_id',
@@ -22,7 +26,25 @@ Materia.belongsToMany(Alumno, {
   otherKey: 'alumno_id'
 });
 
-// Relaciones para Grupos
+// Relaciones directas para AlumnoMateria (necesarias para includes)
+AlumnoMateria.belongsTo(Materia, {
+  foreignKey: 'materia_id',
+  as: 'materia'
+});
+
+AlumnoMateria.belongsTo(Alumno, {
+  foreignKey: 'alumno_id',
+  as: 'alumno'
+});
+
+AlumnoMateria.belongsTo(Periodo, {
+  foreignKey: 'periodo_id',
+  as: 'periodo'
+});
+
+// ============================================
+// RELACIONES ALUMNO - GRUPO
+// ============================================
 Alumno.belongsToMany(Grupo, {
   through: AlumnoGrupo,
   foreignKey: 'alumno_id',
@@ -37,29 +59,7 @@ Grupo.belongsToMany(Alumno, {
   as: 'alumnos'
 });
 
-// Relación Grupo-Tutor
-Grupo.belongsTo(User, {
-  foreignKey: 'tutor_id',
-  as: 'tutor'
-});
-
-User.hasMany(Grupo, {
-  foreignKey: 'tutor_id',
-  as: 'grupos_tutoreados'
-});
-
-// Relación Grupo-Periodo
-Grupo.belongsTo(Periodo, {
-  foreignKey: 'periodo_id',
-  as: 'periodo'
-});
-
-Periodo.hasMany(Grupo, {
-  foreignKey: 'periodo_id',
-  as: 'grupos'
-});
-
-// Relación AlumnoGrupo directa
+// Relaciones directas para AlumnoGrupo
 AlumnoGrupo.belongsTo(Alumno, {
   foreignKey: 'alumno_id',
   as: 'alumno'
@@ -75,7 +75,37 @@ AlumnoGrupo.belongsTo(Periodo, {
   as: 'periodo'
 });
 
-// ✅ Relaciones Canalizacion
+Alumno.hasMany(AlumnoGrupo, {
+  foreignKey: 'alumno_id', 
+  as: 'alumnoGrupos'
+});
+
+// ============================================
+// RELACIONES GRUPO - TUTOR - PERIODO
+// ============================================
+Grupo.belongsTo(User, {
+  foreignKey: 'tutor_id',
+  as: 'tutor'
+});
+
+User.hasMany(Grupo, {
+  foreignKey: 'tutor_id',
+  as: 'grupos_tutoreados'
+});
+
+Grupo.belongsTo(Periodo, {
+  foreignKey: 'periodo_id',
+  as: 'periodo'
+});
+
+Periodo.hasMany(Grupo, {
+  foreignKey: 'periodo_id',
+  as: 'grupos'
+});
+
+// ============================================
+// RELACIONES CANALIZACION
+// ============================================
 Canalizacion.belongsTo(Alumno, { 
   foreignKey: 'alumno_id', 
   as: 'alumno' 
@@ -96,7 +126,50 @@ User.hasMany(Canalizacion, {
   as: 'canalizaciones'
 });
 
-// ✅ AGREGAR Canalizacion AL EXPORT
+// ============================================
+// RELACIONES ALERTAS
+// ============================================
+Alerta.belongsTo(Alumno, { 
+  foreignKey: 'alumno_id', 
+  as: 'alumno' 
+});
+
+Alerta.belongsTo(User, { 
+  foreignKey: 'generada_por', 
+  as: 'generador' 
+});
+
+Alumno.hasMany(Alerta, { 
+  foreignKey: 'alumno_id', 
+  as: 'alertas' 
+});
+
+User.hasMany(Alerta, { 
+  foreignKey: 'generada_por', 
+  as: 'alertas_generadas' 
+});
+
+// ============================================
+// RELACIONES ASISTENCIAS
+// ============================================
+Asistencia.belongsTo(Alumno, { 
+  foreignKey: 'alumno_id', 
+  as: 'alumno' 
+});
+
+Asistencia.belongsTo(User, { 
+  foreignKey: 'registrada_por', 
+  as: 'registrador' 
+});
+
+Alumno.hasMany(Asistencia, { 
+  foreignKey: 'alumno_id', 
+  as: 'asistencias' 
+});
+
+// ============================================
+// EXPORTACIONES
+// ============================================
 export { 
   sequelize, 
   Alumno, 
@@ -106,5 +179,7 @@ export {
   Grupo, 
   AlumnoGrupo,
   Periodo,
-  Canalizacion  // ✅ AGREGAR ESTA LÍNEA
+  Canalizacion, 
+  Alerta,
+  Asistencia
 };

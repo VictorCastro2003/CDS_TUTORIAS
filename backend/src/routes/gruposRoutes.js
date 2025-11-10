@@ -6,8 +6,6 @@ import { Grupo, Alumno, AlumnoGrupo, Periodo, User } from '../models/index.js';
 
 const router = express.Router();
 
-// ⚠️ IMPORTANTE: Rutas específicas PRIMERO, antes de rutas con :id
-
 // 🚀 TRIGGER PARA CAMBIO DE SEMESTRE (SOLO COORDINACIÓN)
 router.post('/avanzar-semestre',
   verifyToken,
@@ -105,8 +103,116 @@ router.put('/alumnos/:alumnoId/cambiar-grupo',
     }
   }
 );
+router.post('/clonar-al-nuevo-periodo',
+  verifyToken,
+  verificarRoles('coordinacion'),
+  async (req, res) => {
+    try {
+      const { grupos_ids } = req.body; // Array de IDs de grupos a clonar
+      
+      const periodoActivo = await Periodo.findOne({ where: { activo: true } });
+      
+      const gruposClonados = [];
+      
+      for (const grupoId of grupos_ids) {
+        const grupoOriginal = await Grupo.findByPk(grupoId);
+        
+        const nuevoGrupo = await Grupo.create({
+          nombre: grupoOriginal.nombre,
+          semestre: grupoOriginal.semestre + 1, // Avanza el semestre
+          carrera: grupoOriginal.carrera,
+          periodo_id: periodoActivo.id,
+          tutor_id: grupoOriginal.tutor_id, // Mantiene el tutor
+          capacidad_maxima: grupoOriginal.capacidad_maxima
+        });
+        
+        gruposClonados.push(nuevoGrupo);
+      }
+      
+      res.json({
+        message: `${gruposClonados.length} grupos clonados al nuevo periodo`,
+        grupos: gruposClonados
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+// Obtener estadísticas de un grupo
+router.get('/:id/estadisticas',
+  verifyToken,
+  async (req, res) => {
+    try {
+      const grupoId = req.params.id;
+      const periodoActivo = await Periodo.findOne({ where: { activo: true } });
 
-// Obtener todos los grupos del periodo activo
+      if (!periodoActivo) {
+        return res.status(400).json({ error: 'No hay periodo activo' });
+      }
+
+      // Total de alumnos
+      const totalAlumnos = await AlumnoGrupo.count({
+        where: { grupo_id: grupoId, periodo_id: periodoActivo.id }
+      });
+
+      // Alumnos con 2+ materias reprobadas
+      const { Op } = await import('sequelize');
+      
+      const alumnosDelGrupo = await AlumnoGrupo.findAll({
+        where: { 
+          grupo_id: grupoId,
+          periodo_id: periodoActivo.id
+        },
+        attributes: ['alumno_id']
+      });
+
+      const idsAlumnos = alumnosDelGrupo.map(a => a.alumno_id);
+
+      let alumnosEnRiesgo = 0;
+      
+      if (idsAlumnos.length > 0) {
+        const AlumnoMateria = (await import('../models/alumnoMateria.js')).default;
+        
+        const materiasReprobadas = await AlumnoMateria.findAll({
+          where: {
+            alumno_id: { [Op.in]: idsAlumnos },
+            calificacion: { [Op.lt]: 70 }
+          },
+          attributes: ['alumno_id']
+        });
+
+        // Contar cuántos alumnos tienen 2 o más materias reprobadas
+        const conteoReprobadas = {};
+        materiasReprobadas.forEach(m => {
+          conteoReprobadas[m.alumno_id] = (conteoReprobadas[m.alumno_id] || 0) + 1;
+        });
+
+        alumnosEnRiesgo = Object.values(conteoReprobadas).filter(count => count >= 2).length;
+      }
+
+      // Total de canalizaciones de alumnos del grupo
+      let totalCanalizaciones = 0;
+      
+      if (idsAlumnos.length > 0) {
+        totalCanalizaciones = await Canalizacion.count({
+          where: {
+            alumno_id: { [Op.in]: idsAlumnos }
+          }
+        });
+      }
+
+      res.json({
+        total_alumnos: totalAlumnos,
+        alumnos_riesgo: alumnosEnRiesgo,
+        total_canalizaciones: totalCanalizaciones
+      });
+    } catch (error) {
+      console.error('Error obteniendo estadísticas:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+// 📌 Obtener todos los grupos del periodo activo
 router.get('/', verifyToken, async (req, res) => {
   try {
     const periodoActivo = await Periodo.findOne({ where: { activo: true } });
@@ -197,46 +303,50 @@ router.post('/',
 
 // ✅ RUTAS CON :id AL FINAL
 
-// Obtener alumnos disponibles para asignar a un grupo
+// 📌 Obtener alumnos disponibles para asignar a un grupo
 router.get('/:id/alumnos-disponibles',
   verifyToken,
   verificarRoles('coordinacion'),
   async (req, res) => {
     try {
       const grupoId = req.params.id;
+      const { semestre, carrera } = req.query;
+
+      const periodoActivo = await Periodo.findOne({ where: { activo: true } });
       
-      const grupo = await Grupo.findByPk(grupoId);
-      if (!grupo) {
-        return res.status(404).json({ error: 'Grupo no encontrado' });
+      if (!periodoActivo) {
+        return res.status(400).json({ error: 'No hay periodo activo' });
       }
 
-      // Usar el periodo del grupo para la consulta
-      const periodoDelGrupo = await Periodo.findByPk(grupo.periodo_id);
-      if (!periodoDelGrupo) {
-        return res.status(400).json({ error: 'El periodo del grupo no es válido' });
+      // Obtener IDs de alumnos ya asignados en este periodo
+      const alumnosAsignados = await AlumnoGrupo.findAll({
+        where: { periodo_id: periodoActivo.id },
+        attributes: ['alumno_id']
+      });
+
+      const idsAsignados = alumnosAsignados.map(a => a.alumno_id);
+
+      const { Op } = await import('sequelize');
+      
+      // ✅ Construir condición WHERE dinámicamente
+      const whereCondition = {
+        id: {
+          [Op.notIn]: idsAsignados.length > 0 ? idsAsignados : [0]
+        }
+      };
+
+      // ✅ Solo filtrar por semestre y carrera si se proporcionan
+      if (semestre && carrera) {
+        whereCondition.Semestre = semestre;
+        whereCondition.Carrera = carrera;
       }
 
       const alumnosDisponibles = await Alumno.findAll({
-        where: {
-          Semestre: grupo.semestre,
-          Carrera: grupo.carrera
-        },
-        include: [{
-          model: Grupo,
-          as: 'grupos',
-          through: {
-            where: { periodo_id: periodoDelGrupo.id }
-          },
-          required: false
-        }],
+        where: whereCondition,
         order: [['Primer_Ap', 'ASC'], ['Nombre', 'ASC']]
       });
 
-      const sinGrupo = alumnosDisponibles.filter(
-        alumno => alumno.grupos.length === 0
-      );
-
-      res.json(sinGrupo);
+      res.json(alumnosDisponibles);
     } catch (error) {
       console.error('Error obteniendo alumnos disponibles:', error);
       res.status(500).json({ error: error.message });

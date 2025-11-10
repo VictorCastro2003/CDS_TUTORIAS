@@ -18,6 +18,11 @@ const AlumnoMateria = sequelize.define("AlumnoMateria", {
     allowNull: false,
     unsigned: true
   },
+  periodo_id: {
+    type: DataTypes.BIGINT,
+    allowNull: false,
+    unsigned: true
+  },
   semestre: {
     type: DataTypes.TINYINT,
     unsigned: true,
