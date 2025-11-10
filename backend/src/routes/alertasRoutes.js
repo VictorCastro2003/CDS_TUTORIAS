@@ -3,7 +3,7 @@ import * as alertaController from '../controllers/alertaController.js';
 import verificarToken from '../middlewares/auth.js';
 
 const router = express.Router();
-
+router.get('/', verificarToken, alertaController.obtenerTodasAlertas);
 router.get('/alumno/:alumnoId', verificarToken, alertaController.obtenerAlertasAlumno);
 router.post('/', verificarToken, alertaController.crearAlerta);
 router.put('/:id/estado', verificarToken, alertaController.actualizarEstadoAlerta);

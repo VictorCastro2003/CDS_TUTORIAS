@@ -1,9 +1,11 @@
 // routes/gruposRoutes.js
 import express from 'express';
+import sequelize from '../config/database.js'; 
+import { Canalizacion, Alerta } from '../models/index.js';
 import verifyToken from '../middlewares/verifyToken.js';
 import verificarRoles from '../middlewares/autorizarRoles.js';
 import { Grupo, Alumno, AlumnoGrupo, Periodo, User } from '../models/index.js';
-
+import { Op } from 'sequelize'; 
 const router = express.Router();
 
 // 🚀 TRIGGER PARA CAMBIO DE SEMESTRE (SOLO COORDINACIÓN)
@@ -138,7 +140,6 @@ router.post('/clonar-al-nuevo-periodo',
     }
   }
 );
-// Obtener estadísticas de un grupo
 router.get('/:id/estadisticas',
   verifyToken,
   async (req, res) => {
@@ -150,14 +151,21 @@ router.get('/:id/estadisticas',
         return res.status(400).json({ error: 'No hay periodo activo' });
       }
 
+      // Obtener información del grupo
+      const grupo = await Grupo.findByPk(grupoId, {
+        include: [{ model: User, as: 'tutor', attributes: ['id', 'name'] }]
+      });
+
+      if (!grupo) {
+        return res.status(404).json({ error: 'Grupo no encontrado' });
+      }
+
       // Total de alumnos
       const totalAlumnos = await AlumnoGrupo.count({
         where: { grupo_id: grupoId, periodo_id: periodoActivo.id }
       });
 
-      // Alumnos con 2+ materias reprobadas
-      const { Op } = await import('sequelize');
-      
+      // Obtener IDs de alumnos del grupo
       const alumnosDelGrupo = await AlumnoGrupo.findAll({
         where: { 
           grupo_id: grupoId,
@@ -169,42 +177,88 @@ router.get('/:id/estadisticas',
       const idsAlumnos = alumnosDelGrupo.map(a => a.alumno_id);
 
       let alumnosEnRiesgo = 0;
-      
+      let canalizacionesPorTipo = [];
+      let alertasPorTipo = [];
+      let promedioGrupo = 0;
+
       if (idsAlumnos.length > 0) {
+        // Alumnos en riesgo (2+ materias reprobadas)
         const AlumnoMateria = (await import('../models/alumnoMateria.js')).default;
         
         const materiasReprobadas = await AlumnoMateria.findAll({
           where: {
             alumno_id: { [Op.in]: idsAlumnos },
-            calificacion: { [Op.lt]: 70 }
+            calificacion: { [Op.lt]: 70 },
+            periodo_id: periodoActivo.id
           },
-          attributes: ['alumno_id']
+          attributes: ['alumno_id', [sequelize.fn('COUNT', sequelize.col('id')), 'total']],
+          group: ['alumno_id'],
+          having: sequelize.literal('COUNT(id) >= 2')
         });
 
-        // Contar cuántos alumnos tienen 2 o más materias reprobadas
-        const conteoReprobadas = {};
-        materiasReprobadas.forEach(m => {
-          conteoReprobadas[m.alumno_id] = (conteoReprobadas[m.alumno_id] || 0) + 1;
-        });
+        alumnosEnRiesgo = materiasReprobadas.length;
 
-        alumnosEnRiesgo = Object.values(conteoReprobadas).filter(count => count >= 2).length;
-      }
-
-      // Total de canalizaciones de alumnos del grupo
-      let totalCanalizaciones = 0;
-      
-      if (idsAlumnos.length > 0) {
-        totalCanalizaciones = await Canalizacion.count({
+        // Promedio del grupo
+        const promedioResult = await AlumnoMateria.findOne({
           where: {
-            alumno_id: { [Op.in]: idsAlumnos }
-          }
+            alumno_id: { [Op.in]: idsAlumnos },
+            periodo_id: periodoActivo.id
+          },
+          attributes: [[sequelize.fn('AVG', sequelize.col('calificacion')), 'promedio']],
+          raw: true
+        });
+
+        promedioGrupo = promedioResult?.promedio ? parseFloat(promedioResult.promedio).toFixed(2) : 0;
+
+        // Canalizaciones por tipo
+        canalizacionesPorTipo = await Canalizacion.findAll({
+          where: { alumno_id: { [Op.in]: idsAlumnos } },
+          attributes: [
+            'tipo_canalizacion',
+            [sequelize.fn('COUNT', sequelize.col('id')), 'total']
+          ],
+          group: ['tipo_canalizacion'],
+          raw: true
+        });
+
+        // Alertas activas por tipo
+        alertasPorTipo = await Alerta.findAll({
+          where: { 
+            alumno_id: { [Op.in]: idsAlumnos },
+            estado: 'activa'
+          },
+          attributes: [
+            'tipo_alerta',
+            [sequelize.fn('COUNT', sequelize.col('id')), 'total']
+          ],
+          group: ['tipo_alerta'],
+          raw: true
         });
       }
+
+      // Total de canalizaciones
+      const totalCanalizaciones = canalizacionesPorTipo.reduce((sum, c) => sum + parseInt(c.total), 0);
+      const totalAlertas = alertasPorTipo.reduce((sum, a) => sum + parseInt(a.total), 0);
 
       res.json({
+        grupo: {
+          id: grupo.id,
+          nombre: grupo.nombre,
+          semestre: grupo.semestre,
+          carrera: grupo.carrera,
+          tutor: grupo.tutor?.name || 'Sin tutor asignado'
+        },
         total_alumnos: totalAlumnos,
         alumnos_riesgo: alumnosEnRiesgo,
-        total_canalizaciones: totalCanalizaciones
+        promedio_grupo: promedioGrupo,
+        canalizaciones: {
+          total: totalCanalizaciones,
+          por_tipo: canalizacionesPorTipo
+        },
+        alertas: {
+          total: totalAlertas,
+          por_tipo: alertasPorTipo
+        }
       });
     } catch (error) {
       console.error('Error obteniendo estadísticas:', error);
@@ -212,6 +266,81 @@ router.get('/:id/estadisticas',
     }
   }
 );
+// Estadísticas por carrera
+router.get('/estadisticas/carrera/:carrera',
+  verifyToken,
+  async (req, res) => {
+    try {
+      const carrera = decodeURIComponent(req.params.carrera);
+      const periodoActivo = await Periodo.findOne({ where: { activo: true } });
+
+      if (!periodoActivo) {
+        return res.status(400).json({ error: 'No hay periodo activo' });
+      }
+
+      // Grupos de la carrera
+      const grupos = await Grupo.findAll({
+        where: { 
+          carrera,
+          periodo_id: periodoActivo.id
+        }
+      });
+
+      const totalGrupos = grupos.length;
+      
+      // Total de alumnos en esa carrera
+      const totalAlumnos = await Alumno.count({ 
+        where: { Carrera: carrera } 
+      });
+
+      // Canalizaciones de alumnos de esa carrera
+      const canalizaciones = await Canalizacion.findAll({
+        include: [{
+          model: Alumno,
+          as: 'alumno',
+          where: { Carrera: carrera },
+          attributes: []
+        }],
+        attributes: [
+          'tipo_canalizacion',
+          [sequelize.fn('COUNT', sequelize.col('Canalizacion.id')), 'total']
+        ],
+        group: ['tipo_canalizacion'],
+        raw: true
+      });
+
+      // Alertas de alumnos de esa carrera
+      const alertas = await Alerta.findAll({
+        include: [{
+          model: Alumno,
+          as: 'alumno',
+          where: { Carrera: carrera },
+          attributes: []
+        }],
+        where: { estado: 'activa' },
+        attributes: [
+          'tipo_alerta',
+          [sequelize.fn('COUNT', sequelize.col('Alerta.id')), 'total']
+        ],
+        group: ['tipo_alerta'],
+        raw: true
+      });
+
+      res.json({
+        carrera,
+        total_grupos: totalGrupos,
+        total_alumnos: totalAlumnos,
+        canalizaciones,
+        alertas
+      });
+    } catch (error) {
+      console.error('Error obteniendo estadísticas por carrera:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+
 // 📌 Obtener todos los grupos del periodo activo
 router.get('/', verifyToken, async (req, res) => {
   try {
