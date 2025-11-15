@@ -8,6 +8,8 @@ export default function CanalizacionForm({ alumno_id, nombreAlumno }) {
     alumno_id: alumno_id || "",
     tutor_id: "",
     tipo_canalizacion: "academica",
+    tipo_atencion: "personal",   
+    nota_derivacion: "",  
     area_destino: "",
     motivo: "",
     observaciones: "",
@@ -120,6 +122,8 @@ export default function CanalizacionForm({ alumno_id, nombreAlumno }) {
         alumno_id: alumno_id || "",
         tutor_id: "",
         tipo_canalizacion: "academica",
+        tipo_atencion: "personal",       
+        nota_derivacion: "",  
         area_destino: "",
         motivo: "",
         observaciones: "",
@@ -185,7 +189,47 @@ export default function CanalizacionForm({ alumno_id, nombreAlumno }) {
                 </small>
               )}
             </div>
+{/* ⭐ TIPO DE ATENCIÓN - NUEVO CAMPO */}
+<div className="col-md-6">
+  <label className="form-label fw-semibold">
+    <i className="bi bi-person-check me-1"></i> 
+    Tipo de Atención <span className="text-danger">*</span>
+  </label>
+  <select
+    name="tipo_atencion"
+    value={form.tipo_atencion}
+    onChange={handleChange}
+    className="form-select"
+    required
+  >
+    <option value="personal">Solicitud Personal del Alumno</option>
+    <option value="tutor">Referido por Tutor</option>
+    <option value="docente">Referido por Docente</option>
+  </select>
+  <small className="text-muted">
+    Indica cómo llegó el alumno al servicio
+  </small>
+</div>
 
+{/* ⭐ NOTA DE DERIVACIÓN - NUEVO CAMPO */}
+<div className="col-md-6">
+  <label className="form-label fw-semibold">
+    <i className="bi bi-info-circle me-1"></i> 
+    Nota de Derivación <span className="text-danger">*</span>
+  </label>
+  <textarea
+    name="nota_derivacion"
+    value={form.nota_derivacion}
+    onChange={handleChange}
+    rows="3"
+    placeholder="Describe cómo llegó el alumno (ej: 'El tutor Juan Pérez detectó bajo rendimiento')"
+    className="form-control"
+    required
+  ></textarea>
+  <small className="text-muted">
+    Explica brevemente el origen de la canalización
+  </small>
+</div>
             {/* Selector de Tutor */}
             <div className="col-md-6">
               <label className="form-label fw-semibold">
@@ -343,21 +387,23 @@ export default function CanalizacionForm({ alumno_id, nombreAlumno }) {
 
             {/* Botones */}
             <div className="col-12 d-flex justify-content-end gap-2 mt-3">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={() => {
-                  setForm({
-                    alumno_id: alumno_id || "",
-                    tutor_id: "",
-                    tipo_canalizacion: "academica",
-                    area_destino: "",
-                    motivo: "",
-                    observaciones: "",
-                    problematica_identificada: "",
-                    servicio_solicitado: ""
-                  });
-                }}
+             <button
+  type="button"
+  className="btn btn-outline-secondary"
+  onClick={() => {
+    setForm({
+      alumno_id: alumno_id || "",
+      tutor_id: "",
+      tipo_canalizacion: "academica",
+      tipo_atencion: "personal",       
+      nota_derivacion: "",              
+      area_destino: "",
+      motivo: "",
+      observaciones: "",
+      problematica_identificada: "",
+      servicio_solicitado: ""
+    });
+  }}
                 disabled={submitting}
               >
                 <i className="bi bi-x-circle me-2"></i>

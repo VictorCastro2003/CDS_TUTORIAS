@@ -21,9 +21,23 @@ const Canalizacion = sequelize.define('Canalizacion', {
     type: DataTypes.ENUM('psicologica', 'academica', 'medica', 'otra'),
     allowNull: false,
     defaultValue: 'academica',
-    comment: 'Tipo de canalización: psicológica requiere reporte especial'
+    comment: 'Tipo de canalización'
   },
-  // CAMPOS GENERALES (para ambos tipos)
+  
+  // ⭐ NUEVOS CAMPOS
+  tipo_atencion: {
+    type: DataTypes.ENUM('personal', 'tutor', 'docente'),
+    allowNull: false,
+    defaultValue: 'personal',
+    comment: 'Cómo llegó el alumno al servicio'
+  },
+  nota_derivacion: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Descripción de cómo llegó el alumno'
+  },
+  
+  // CAMPOS GENERALES
   area_destino: {
     type: DataTypes.STRING(100),
     allowNull: false,
@@ -62,7 +76,6 @@ const Canalizacion = sequelize.define('Canalizacion', {
     type: DataTypes.DATE,
     allowNull: true,
   },
-  // Campos de revisión (Vo.Bo. del coordinador)
   revisada_por: {
     type: DataTypes.BIGINT,
     allowNull: true,
@@ -77,7 +90,6 @@ const Canalizacion = sequelize.define('Canalizacion', {
     allowNull: true,
     comment: 'Notas del coordinador'
   },
-  // Para alertas automáticas
   origen_alerta: {
     type: DataTypes.ENUM('manual', 'faltas', 'reprobadas', 'docente'),
     defaultValue: 'manual',

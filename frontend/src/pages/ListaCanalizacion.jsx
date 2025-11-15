@@ -305,23 +305,56 @@ export default function VistaCanalizaciones({ alumno_id }) {
                     <td>
                       <div className="d-flex gap-2 flex-wrap">
                         {/* Botón detalles */}
-                        <button
-                          className="btn btn-sm btn-primary"
-                          onClick={() => {
-                            Swal.fire({
-                              title: 'Detalles de Canalización',
-                              html: `
-                                <div class="text-start">
-                                  <p><strong>Motivo:</strong> ${can.motivo}</p>
-                                  ${can.problematica_identificada ? `<p><strong>Problemática:</strong> ${can.problematica_identificada}</p>` : ''}
-                                  ${can.servicio_solicitado ? `<p><strong>Servicio:</strong> ${can.servicio_solicitado}</p>` : ''}
-                                  ${can.observaciones ? `<p><strong>Observaciones:</strong> ${can.observaciones}</p>` : ''}
-                                </div>
-                              `,
-                              width: 600
-                            });
-                          }}
-                        >
+                       <button
+  className="btn btn-sm btn-primary"
+  onClick={() => {
+    // ⭐ Formatear tipo de atención
+    const tipoAtencionTexto = can.tipo_atencion === 'personal' 
+      ? '👤 Solicitud Personal' 
+      : can.tipo_atencion === 'tutor' 
+        ? '👨‍🏫 Referido por Tutor' 
+        : '👨‍🏫 Referido por Docente';
+    
+    Swal.fire({
+      title: 'Detalles de Canalización',
+      html: `
+        <div class="text-start">
+          ${can.tipo_atencion ? `
+            <div class="alert alert-info mb-2">
+              <strong>📋 Tipo de Atención:</strong><br>
+              ${tipoAtencionTexto}
+            </div>
+          ` : ''}
+          
+          ${can.nota_derivacion ? `
+            <div class="alert alert-secondary mb-2">
+              <strong>📝 Nota de Derivación:</strong><br>
+              ${can.nota_derivacion}
+            </div>
+          ` : ''}
+          
+          <p><strong>Motivo:</strong> ${can.motivo}</p>
+          
+          ${can.problematica_identificada ? `
+            <p><strong>Problemática:</strong> ${can.problematica_identificada}</p>
+          ` : ''}
+          
+          ${can.servicio_solicitado ? `
+            <p><strong>Servicio:</strong> ${can.servicio_solicitado}</p>
+          ` : ''}
+          
+          ${can.observaciones ? `
+            <p><strong>Observaciones:</strong> ${can.observaciones}</p>
+          ` : ''}
+        </div>
+      `,
+      width: 650,
+      customClass: {
+        htmlContainer: 'text-start'
+      }
+    });
+  }}
+>
                           <i className="bi bi-eye me-1"></i>
                           Ver
                         </button>

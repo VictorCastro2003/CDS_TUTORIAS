@@ -283,7 +283,6 @@ export const generarReportePDF = async (req, res) => {
   }
 };
 
-// Generar reporte Excel
 export const generarReporteExcel = async (req, res) => {
   try {
     const canalizaciones = await Canalizacion.findAll({
@@ -297,14 +296,16 @@ export const generarReporteExcel = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Canalizaciones");
 
-    // Encabezados
+    // ⭐ AGREGAR COLUMNAS NUEVAS
     sheet.columns = [
       { header: "Tipo", key: "tipo", width: 15 },
+      { header: "Tipo Atención", key: "tipo_atencion", width: 18 },  // NUEVO
       { header: "Alumno", key: "alumno", width: 30 },
       { header: "No. Control", key: "num_control", width: 15 },
       { header: "Tutor", key: "tutor", width: 25 },
       { header: "Área destino", key: "area_destino", width: 20 },
       { header: "Motivo", key: "motivo", width: 35 },
+      { header: "Nota Derivación", key: "nota_derivacion", width: 40 }, // NUEVO
       { header: "Estado", key: "estado", width: 15 },
       { header: "Fecha", key: "fecha", width: 15 },
     ];
@@ -317,15 +318,19 @@ export const generarReporteExcel = async (req, res) => {
       fgColor: { argb: 'FF4472C4' }
     };
 
-    // Datos
+    // ⭐ AGREGAR DATOS NUEVOS
     canalizaciones.forEach((c) => {
       sheet.addRow({
         tipo: c.tipo_canalizacion,
+        tipo_atencion: c.tipo_atencion === 'personal' ? 'Personal' : 
+                       c.tipo_atencion === 'tutor' ? 'Por Tutor' : 
+                       'Por Docente',  // NUEVO
         alumno: `${c.alumno?.Nombre || ""} ${c.alumno?.Primer_Ap || ""}`,
         num_control: c.alumno?.Num_Control || "N/A",
         tutor: c.tutor?.name || "N/A",
         area_destino: c.area_destino,
         motivo: c.motivo,
+        nota_derivacion: c.nota_derivacion || "Sin información", // NUEVO
         estado: c.estado,
         fecha: new Date(c.fecha).toLocaleDateString('es-MX'),
       });
