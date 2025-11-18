@@ -1,16 +1,17 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { loginUser } from "../utils/api";
+import { useAuth } from "../context/AuthContext";
 import '../styles/LoginStyle.css';
 
-const Login = ({ setToken }) => {
+const Login = () => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState(""); // 'success' o 'error'
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const auth = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,24 +20,18 @@ const Login = ({ setToken }) => {
     setMessageType("");
     
     try {
-      const data = await loginUser(name, password);
-    if (data.token) {
-  setToken(data.token);
-  localStorage.setItem("token", data.token); // ✅ guarda el token
-  setMessage("✅ Inicio de sesión exitoso. Redirigiendo...");
-  setMessageType("success");
-        
-        // Redirigir después de 1.5 segundos
-        setTimeout(() => {
-          navigate("/alumnos");
-        }, 1500);
+      if (!auth) throw new Error('Auth no disponible');
+      const res = await auth.login(name, password);
+
+      if (res.success) {
+        Swal.fire({ icon: 'success', title: 'Inicio de sesión', text: `Bienvenido ${res.user?.name || ''}`, timer: 1400, showConfirmButton: false });
+        // legacy: if parent still wants a token, it can be provided
+        setTimeout(() => navigate('/alumnos'), 1200);
       } else {
-        setMessage("❌ " + (data.message || "Credenciales incorrectas"));
-        setMessageType("error");
+        Swal.fire({ icon: 'error', title: 'Error', text: res.error || 'Credenciales incorrectas' });
       }
     } catch (error) {
-      setMessage("❌ Error de conexión. Intenta nuevamente.");
-      setMessageType("error");
+      Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'Error de conexión' });
     } finally {
       setIsSubmitting(false);
     }
@@ -90,7 +85,7 @@ const Login = ({ setToken }) => {
               <input type="checkbox" id="remember" disabled={isSubmitting} />
               <label htmlFor="remember">Recordar sesión</label>
             </div>
-            <a href="#" className="forgot-password">
+            <a href="/forgot" className="forgot-password">
               ¿Olvidaste tu contraseña?
             </a>
           </div>
@@ -114,7 +109,7 @@ const Login = ({ setToken }) => {
         <div className="login-footer">
           <p>
             ¿No tienes una cuenta?{" "}
-            <a href="/registro" className="register-link">
+            <a href="/register" className="register-link">
               Regístrate aquí
             </a>
           </p>

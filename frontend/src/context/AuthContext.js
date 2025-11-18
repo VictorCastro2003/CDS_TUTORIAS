@@ -14,7 +14,9 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    
+    // ensure axios uses backend API base
+    axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
+
     if (token && userData) {
       setUser(JSON.parse(userData));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -23,26 +25,20 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (name, password) => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
-        email,
-        password
-      });
+      const { data } = await axios.post('/auth/login', { name, password });
+      const { token, user: usuario } = data;
 
-      const { token, usuario } = response.data;
-      
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(usuario));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(usuario);
-      
-      return { success: true };
+
+      return { success: true, user: usuario, token };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Error de conexión' 
-      };
+      const err = error.response?.data?.message || error.message || 'Error de conexión';
+      return { success: false, error: err };
     }
   };
 

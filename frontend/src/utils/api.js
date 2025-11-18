@@ -19,8 +19,9 @@ export const loginUser = async (name, password) => {
 };
 
 export const fetchMe = async (token) => {
+  const t = token || localStorage.getItem('token');
   const res = await fetch(`${API_URL}/users/me`, {
-    headers: { "Authorization": `Bearer ${token}` }
+    headers: { "Authorization": `Bearer ${t}` }
   });
   return res.json();
 };

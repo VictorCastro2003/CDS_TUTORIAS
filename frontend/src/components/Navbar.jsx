@@ -1,5 +1,6 @@
 import React from 'react';
-import { Navbar, Nav, Container, NavDropdown } from 'react-bootstrap';
+import { Navbar, Nav, Container } from 'react-bootstrap';
+import './Navbar.css';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 
@@ -8,12 +9,12 @@ const CustomNavbar = () => {
   const navigate = useNavigate();
 
   // Add null check
-  if (!auth) {
+  if (!auth || !auth.user) {
     return (
-      <Navbar bg="primary" variant="dark" expand="lg" className="shadow-sm">
+      <Navbar bg="primary" variant="dark" expand="lg" className="shadow-sm custom-navbar">
         <Container fluid>
-          <Navbar.Brand as={Link} to="/" className="fw-bold">
-            🏫 Sistema ABC
+          <Navbar.Brand as={Link} to="/" className="fw-bold text-white">
+            🏫 Plataforma de Tutorías
           </Navbar.Brand>
           <Navbar.Toggle aria-controls="basic-navbar-nav" />
           <Navbar.Collapse id="basic-navbar-nav">
@@ -34,7 +35,7 @@ const CustomNavbar = () => {
   };
 
   return (
-    <Navbar bg="primary" variant="dark" expand="lg" className="shadow-sm">
+    <Navbar bg="primary" variant="dark" expand="lg" className="shadow-sm custom-navbar">
       <Container fluid>
         <Navbar.Brand as={Link} to="/" className="fw-bold">
           🏫 Sistema ABC
@@ -48,16 +49,15 @@ const CustomNavbar = () => {
             <Nav.Link as={Link} to="/canalizaciones">Canalizaciones</Nav.Link>
             <Nav.Link as={Link} to="/reportes">Reportes</Nav.Link>
           </Nav>
-          <Nav>
-            <NavDropdown title={user?.nombre || 'Usuario'} id="user-dropdown" align="end">
-              <NavDropdown.ItemText>
-                <small>{user?.email}</small>
-              </NavDropdown.ItemText>
-              <NavDropdown.Divider />
-              <NavDropdown.Item onClick={handleLogout}>
-                Cerrar Sesión
-              </NavDropdown.Item>
-            </NavDropdown>
+          <Nav className="d-flex align-items-center">
+            <div className="user-badge me-3">
+              <div className="avatar">{(user?.name || user?.nombre || 'U')[0]}</div>
+              <div className="d-none d-sm-block text-white ps-2">
+                <div className="user-name">{user?.name || user?.nombre || 'Usuario'}</div>
+                <small className="text-white-50">{user?.rol || ''}</small>
+              </div>
+            </div>
+            <button className="logout-btn" onClick={handleLogout}>Cerrar Sesión</button>
           </Nav>
         </Navbar.Collapse>
       </Container>
