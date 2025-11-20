@@ -7,9 +7,11 @@ import User from "./user.js";
 import Grupo from "./Grupo.js";
 import AlumnoGrupo from "./alumnoGrupo.js";
 import Periodo from "./Periodo.js";
-import Canalizacion from "./canalizacion.js"; 
+import Canalizacion from "./canalizacion.js";
 import Alerta from "./alerta.js";
 import Asistencia from "./asistencia.js";
+import Notificacion from "./notificacion.js";
+import Contrarreferencia from "./contrarreferencia.js";
 
 // ============================================
 // RELACIONES ALUMNO - MATERIA
@@ -76,7 +78,7 @@ AlumnoGrupo.belongsTo(Periodo, {
 });
 
 Alumno.hasMany(AlumnoGrupo, {
-  foreignKey: 'alumno_id', 
+  foreignKey: 'alumno_id',
   as: 'alumnoGrupos'
 });
 
@@ -106,14 +108,35 @@ Periodo.hasMany(Grupo, {
 // ============================================
 // RELACIONES CANALIZACION
 // ============================================
-Canalizacion.belongsTo(Alumno, { 
-  foreignKey: 'alumno_id', 
-  as: 'alumno' 
+Canalizacion.belongsTo(Alumno, {
+  foreignKey: 'alumno_id',
+  as: 'alumno'
 });
 
-Canalizacion.belongsTo(User, { 
-  foreignKey: 'tutor_id', 
-  as: 'tutor' 
+Canalizacion.belongsTo(User, {
+  foreignKey: 'tutor_id',
+  as: 'tutor'
+});
+
+// Relaciones para el workflow de canalizaciones
+Canalizacion.belongsTo(User, {
+  foreignKey: 'jefe_division_id',
+  as: 'jefe_division'
+});
+
+Canalizacion.belongsTo(User, {
+  foreignKey: 'docente_asesor_id',
+  as: 'docente_asesor'
+});
+
+Canalizacion.belongsTo(User, {
+  foreignKey: 'coordinacion_id',
+  as: 'coordinacion'
+});
+
+Canalizacion.belongsTo(User, {
+  foreignKey: 'psicologo_id',
+  as: 'psicologo'
 });
 
 Alumno.hasMany(Canalizacion, {
@@ -129,57 +152,107 @@ User.hasMany(Canalizacion, {
 // ============================================
 // RELACIONES ALERTAS
 // ============================================
-Alerta.belongsTo(Alumno, { 
-  foreignKey: 'alumno_id', 
-  as: 'alumno' 
+Alerta.belongsTo(Alumno, {
+  foreignKey: 'alumno_id',
+  as: 'alumno'
 });
 
-Alerta.belongsTo(User, { 
-  foreignKey: 'generada_por', 
-  as: 'generador' 
+Alerta.belongsTo(User, {
+  foreignKey: 'generada_por',
+  as: 'generador'
 });
 
-Alumno.hasMany(Alerta, { 
-  foreignKey: 'alumno_id', 
-  as: 'alertas' 
+Alumno.hasMany(Alerta, {
+  foreignKey: 'alumno_id',
+  as: 'alertas'
 });
 
-User.hasMany(Alerta, { 
-  foreignKey: 'generada_por', 
-  as: 'alertas_generadas' 
+User.hasMany(Alerta, {
+  foreignKey: 'generada_por',
+  as: 'alertas_generadas'
 });
 
 // ============================================
 // RELACIONES ASISTENCIAS
 // ============================================
-Asistencia.belongsTo(Alumno, { 
-  foreignKey: 'alumno_id', 
-  as: 'alumno' 
+Asistencia.belongsTo(Alumno, {
+  foreignKey: 'alumno_id',
+  as: 'alumno'
 });
 
-Asistencia.belongsTo(User, { 
-  foreignKey: 'registrada_por', 
-  as: 'registrador' 
+Asistencia.belongsTo(User, {
+  foreignKey: 'registrada_por',
+  as: 'registrador'
 });
 
-Alumno.hasMany(Asistencia, { 
-  foreignKey: 'alumno_id', 
-  as: 'asistencias' 
+Alumno.hasMany(Asistencia, {
+  foreignKey: 'alumno_id',
+  as: 'asistencias'
 });
 
+// ============================================
+// RELACIONES NOTIFICACIONES
+// ============================================
+Notificacion.belongsTo(User, {
+  foreignKey: 'usuario_id',
+  as: 'usuario'
+});
+
+Notificacion.belongsTo(Canalizacion, {
+  foreignKey: 'canalizacion_id',
+  as: 'canalizacion'
+});
+
+User.hasMany(Notificacion, {
+  foreignKey: 'usuario_id',
+  as: 'notificaciones'
+});
+
+Canalizacion.hasMany(Notificacion, {
+  foreignKey: 'canalizacion_id',
+  as: 'notificaciones'
+});
+
+
+// ============================================
+// RELACIONES CONTRARREFERENCIAS (CORREGIDAS)
+// ============================================
+// ✅ Cambia 'generada_por' por 'respondida_por'
+
+Contrarreferencia.belongsTo(Canalizacion, {
+  foreignKey: 'canalizacion_id',
+  as: 'canalizacion'
+});
+
+Contrarreferencia.belongsTo(User, {
+  foreignKey: 'respondida_por',  // ✅ CAMBIO AQUÍ
+  as: 'generador'
+});
+
+Canalizacion.hasMany(Contrarreferencia, {
+  foreignKey: 'canalizacion_id',
+  as: 'contrarreferencias'
+});
+
+User.hasMany(Contrarreferencia, {
+  foreignKey: 'respondida_por',  // ✅ CAMBIO AQUÍ
+  as: 'contrarreferencias_generadas'
+});
 // ============================================
 // EXPORTACIONES
 // ============================================
-export { 
-  sequelize, 
-  Alumno, 
-  Materia, 
-  AlumnoMateria, 
-  User, 
-  Grupo, 
+export {
+  sequelize,
+  Alumno,
+  Materia,
+  AlumnoMateria,
+  User,
+  Grupo,
   AlumnoGrupo,
   Periodo,
-  Canalizacion, 
+  Canalizacion,
   Alerta,
-  Asistencia
+  Asistencia,
+  Notificacion,
+  Contrarreferencia
 };

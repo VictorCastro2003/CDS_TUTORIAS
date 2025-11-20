@@ -6,23 +6,28 @@ import gruposRoutes from './gruposRoutes.js';
 import canalizacionesRoutes from './canalizacionesRoutes.js';
 import periodosRoutes from './periodosRoutes.js';
 import materiasRoutes from './materiaRoutes.js';
-import estadisticasRoutes from './estadisticasRoutes.js'; 
-import alertasRoutes from './alertasRoutes.js'; 
+import estadisticasRoutes from './estadisticasRoutes.js';
+import alertasRoutes from './alertasRoutes.js';
 import calificacionesRoutes from './calificacionesRoutes.js';
+import notificacionesRoutes from './notificacionRoutes.js';
+import workflowRoutes from './workflowRoutes.js';
+import contrarreferenciaRoutes from './contrarreferenciaRoutes.js';
 
 const router = express.Router();
 
 router.use('/auth', authRoutes);
 router.use('/users', usersRoutes);
-router.use('/alumnos', alumnosRoutes); 
+router.use('/alumnos', alumnosRoutes);
 router.use('/grupos', gruposRoutes);
 router.use('/canalizaciones', canalizacionesRoutes);
 router.use('/periodos', periodosRoutes);
-router.use('/materias', materiasRoutes); 
-router.use('/estadisticas', estadisticasRoutes); 
+router.use('/materias', materiasRoutes);
+router.use('/estadisticas', estadisticasRoutes);
 router.use('/alertas', alertasRoutes);
-router.use('/calificaciones', calificacionesRoutes); 
-
+router.use('/calificaciones', calificacionesRoutes);
+router.use('/notificaciones', notificacionesRoutes);
+router.use('/workflow', workflowRoutes);
+router.use('/contrarreferencias', contrarreferenciaRoutes);
 
 router.get('/', (req, res) => res.json({ ok: true, message: 'API v1' }));
 

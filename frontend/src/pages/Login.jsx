@@ -18,7 +18,7 @@ const Login = () => {
     setIsSubmitting(true);
     setMessage("");
     setMessageType("");
-    
+
     try {
       if (!auth) throw new Error('Auth no disponible');
       const res = await auth.login(name, password);
@@ -40,7 +40,7 @@ const Login = () => {
   return (
     <div className="login-wrapper">
       <div className="login-background"></div>
-      
+
       <div className="login-container">
         <div className="login-header">
           <h2>Bienvenido de vuelta</h2>

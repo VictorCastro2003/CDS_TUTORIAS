@@ -23,15 +23,15 @@ const AlumnoDetalle = () => {
 
   const fetchWithAuth = async (url) => {
     const token = localStorage.getItem('token');
-    
+
     const headers = {
       'Content-Type': 'application/json'
     };
-    
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     const res = await fetch(url, { headers });
     return res;
   };
@@ -39,7 +39,7 @@ const AlumnoDetalle = () => {
   const fetchAlumno = async () => {
     try {
       const res = await fetchWithAuth(`http://localhost:4000/api/alumnos/${id}`);
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           throw new Error("No autorizado. Por favor inicia sesión.");
@@ -49,7 +49,7 @@ const AlumnoDetalle = () => {
         }
         throw new Error("Error al obtener datos del alumno");
       }
-      
+
       const data = await res.json();
       console.log('Fecha_Nac recibida:', data.Fecha_Nac, typeof data.Fecha_Nac);
       setAlumno(data);
@@ -73,12 +73,12 @@ const AlumnoDetalle = () => {
   const fetchCalificaciones = async () => {
     try {
       const res = await fetchWithAuth(`http://localhost:4000/api/alumnos/${id}/calificaciones`);
-      
+
       if (res.status === 404) {
         setCalificaciones([]);
         return;
       }
-      
+
       if (!res.ok) {
         if (res.status === 401) {
           console.warn("No autorizado para ver calificaciones");
@@ -86,7 +86,7 @@ const AlumnoDetalle = () => {
         }
         throw new Error("Error al cargar calificaciones");
       }
-      
+
       const data = await res.json();
       console.log('📥 DATOS RECIBIDOS DEL BACKEND:');
       console.log('Total de registros:', data.length);
@@ -97,7 +97,7 @@ const AlumnoDetalle = () => {
           materia_id: data[0].materia_id
         });
       }
-      
+
       setCalificaciones(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error cargando calificaciones:", error);
@@ -131,26 +131,26 @@ const AlumnoDetalle = () => {
       await Promise.all([fetchAlumno(), fetchCalificaciones(), fetchAlertas()]);
       setLoading(false);
     };
-    
+
     loadData();
   }, [id]);
 
   // Calcular estadísticas de calificaciones
   const estadisticas = React.useMemo(() => {
     if (calificaciones.length === 0) return null;
-    
+
     const calificacionesNumericas = calificaciones
       .filter(c => c.calificacion !== 'Sin calificar' && !isNaN(c.calificacion))
       .map(c => parseFloat(c.calificacion));
-    
+
     if (calificacionesNumericas.length === 0) return null;
-    
+
     const promedio = (calificacionesNumericas.reduce((a, b) => a + b, 0) / calificacionesNumericas.length).toFixed(2);
     const aprobadas = calificacionesNumericas.filter(c => c >= 70).length;
     const reprobadas = calificacionesNumericas.filter(c => c < 70).length;
     const maxima = Math.max(...calificacionesNumericas);
     const minima = Math.min(...calificacionesNumericas);
-    
+
     return { promedio, aprobadas, reprobadas, maxima, minima, total: calificacionesNumericas.length };
   }, [calificaciones]);
 
@@ -168,38 +168,118 @@ const AlumnoDetalle = () => {
     return [...new Set(semestres)].sort((a, b) => a - b);
   }, [calificaciones]);
 
-  // Función para formatear la fecha
+  // Función para formatear la fecha - VERSIÓN CORREGIDA
   const formatearFecha = (fechaStr) => {
+    console.log('🔍 Depuración formatearFecha - Input:', fechaStr, 'Tipo:', typeof fechaStr);
+
     if (!fechaStr) return "No especificada";
 
-    let fechaStrLimpia = fechaStr.trim();
-    if (!fechaStrLimpia.includes('T')) {
-      fechaStrLimpia += 'T00:00:00';
-    }
-    const fecha = new Date(fechaStrLimpia);
-    if (isNaN(fecha)) return "Fecha inválida";
+    try {
+      // Limpiar y estandarizar el formato de fecha
+      let fechaLimpia = fechaStr.toString().trim();
 
-    return fecha.toLocaleDateString("es-MX", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+      // Si contiene 'T', tomar solo la parte de la fecha
+      if (fechaLimpia.includes('T')) {
+        fechaLimpia = fechaLimpia.split('T')[0];
+      }
+
+      // Si contiene espacios, tomar solo la primera parte
+      if (fechaLimpia.includes(' ')) {
+        fechaLimpia = fechaLimpia.split(' ')[0];
+      }
+
+      console.log('🔍 Fecha limpia:', fechaLimpia);
+
+      // Validar formato YYYY-MM-DD
+      const partes = fechaLimpia.split('-');
+      if (partes.length !== 3) {
+        console.warn('❌ Formato de fecha no válido:', fechaLimpia);
+        return "Fecha inválida";
+      }
+
+      const [anio, mes, dia] = partes.map(Number);
+
+      // Validar números
+      if (isNaN(anio) || isNaN(mes) || isNaN(dia)) {
+        console.warn('❌ Componentes de fecha no numéricos:', { anio, mes, dia });
+        return "Fecha inválida";
+      }
+
+      // Crear fecha en hora local (evita problemas de zona horaria)
+      const fecha = new Date(anio, mes - 1, dia);
+
+      console.log('🔍 Fecha creada:', fecha);
+
+      if (isNaN(fecha.getTime())) {
+        console.warn('❌ Fecha inválida después de parsing:', fechaStr);
+        return "Fecha inválida";
+      }
+
+      const fechaFormateada = fecha.toLocaleDateString("es-MX", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      console.log('🔍 Fecha formateada:', fechaFormateada);
+      return fechaFormateada;
+
+    } catch (error) {
+      console.error('❌ Error en formatearFecha:', error);
+      return "Error en fecha";
+    }
   };
 
-  // Función para calcular la edad
+  // Función para calcular la edad - VERSIÓN CORREGIDA
   const calcularEdad = (fechaStr) => {
     if (!fechaStr) return null;
-    let fechaStrLimpia = fechaStr.trim();
-    if (!fechaStrLimpia.includes('T')) {
-      fechaStrLimpia += 'T00:00:00';
+
+    try {
+      // Usar la misma lógica de limpieza que formatearFecha
+      let fechaLimpia = fechaStr.toString().trim();
+
+      if (fechaLimpia.includes('T')) {
+        fechaLimpia = fechaLimpia.split('T')[0];
+      }
+
+      if (fechaLimpia.includes(' ')) {
+        fechaLimpia = fechaLimpia.split(' ')[0];
+      }
+
+      const [anio, mes, dia] = fechaLimpia.split('-').map(Number);
+
+      // Crear fechas en hora local sin componente de tiempo
+      const hoy = new Date();
+      const nacimiento = new Date(anio, mes - 1, dia);
+
+      // Validar
+      if (isNaN(nacimiento.getTime())) {
+        console.warn('❌ Fecha de nacimiento inválida para cálculo de edad:', fechaStr);
+        return null;
+      }
+
+      // Calcular edad
+      let edad = hoy.getFullYear() - nacimiento.getFullYear();
+      const mesHoy = hoy.getMonth();
+      const diaHoy = hoy.getDate();
+
+      // Ajustar si aún no ha pasado el cumpleaños este año
+      if (mesHoy < nacimiento.getMonth() ||
+        (mesHoy === nacimiento.getMonth() && diaHoy < nacimiento.getDate())) {
+        edad--;
+      }
+
+      // Validar edad razonable (entre 15 y 100 años)
+      if (edad < 15 || edad > 100) {
+        console.warn('❌ Edad calculada fuera de rango razonable:', edad);
+        return null;
+      }
+
+      return edad;
+    } catch (error) {
+      console.error('Error calculando edad:', error);
+      return null;
     }
-    const nacimiento = new Date(fechaStrLimpia);
-    if (isNaN(nacimiento)) return null;
-    const hoy = new Date();
-    let edad = hoy.getFullYear() - nacimiento.getFullYear();
-    const m = hoy.getMonth() - nacimiento.getMonth();
-    if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
-    return edad >= 0 ? edad : null;
   };
 
   if (loading) {
@@ -248,7 +328,7 @@ const AlumnoDetalle = () => {
 
           <div className="text-center">
             <div className="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                 style={{ width: '80px', height: '80px', fontSize: '2rem' }}>
+              style={{ width: '80px', height: '80px', fontSize: '2rem' }}>
               {alumno.Nombre.charAt(0)}{alumno.Primer_Ap.charAt(0)}
             </div>
             <h2 className="mb-2">
@@ -433,10 +513,10 @@ const AlumnoDetalle = () => {
               </h5>
             </div>
             <div className="card-body">
-              <AsignarMateriasTab 
-                alumnoId={id} 
-                alumno={alumno} 
-                onMateriasActualizadas={fetchCalificaciones} 
+              <AsignarMateriasTab
+                alumnoId={id}
+                alumno={alumno}
+                onMateriasActualizadas={fetchCalificaciones}
               />
             </div>
           </div>
@@ -449,8 +529,8 @@ const AlumnoDetalle = () => {
               <div className="d-flex justify-content-between align-items-center">
                 <h5 className="mb-0"><i className="bi bi-journal-text me-2"></i>Calificaciones</h5>
                 {semestresUnicos.length > 0 && (
-                  <select 
-                    className="form-select form-select-sm" 
+                  <select
+                    className="form-select form-select-sm"
                     style={{ width: 'auto' }}
                     value={filtroSemestre}
                     onChange={(e) => setFiltroSemestre(e.target.value)}
@@ -482,16 +562,15 @@ const AlumnoDetalle = () => {
                           const calNum = parseFloat(c.calificacion);
                           const esAprobada = !isNaN(calNum) && calNum >= 70;
                           const esSinCalificar = c.calificacion === 'Sin calificar';
-                          
+
                           return (
                             <tr key={i}>
                               <td className="text-muted">{i + 1}</td>
                               <td className="fw-semibold">{c.materia}</td>
                               <td className="text-center">
-                                <span className={`badge fs-6 ${
-                                  esSinCalificar ? 'bg-warning text-dark' :
+                                <span className={`badge fs-6 ${esSinCalificar ? 'bg-warning text-dark' :
                                   esAprobada ? 'bg-success' : 'bg-danger'
-                                }`}>
+                                  }`}>
                                   {c.calificacion}
                                 </span>
                               </td>
@@ -513,7 +592,7 @@ const AlumnoDetalle = () => {
                       </tbody>
                     </table>
                   </div>
-                  
+
                   {filtroSemestre && (
                     <div className="alert alert-info mb-0 mt-3">
                       <i className="bi bi-info-circle me-2"></i>
@@ -527,7 +606,7 @@ const AlumnoDetalle = () => {
                     <i className="bi bi-inbox display-1 text-muted"></i>
                     <h5 className="mt-3">No hay calificaciones registradas</h5>
                     <p className="text-muted mb-0">
-                      {filtroSemestre 
+                      {filtroSemestre
                         ? `No se encontraron calificaciones para el Semestre ${filtroSemestre}`
                         : 'Este alumno aún no tiene calificaciones asignadas'}
                     </p>
@@ -547,8 +626,8 @@ const AlumnoDetalle = () => {
               </h5>
             </div>
             <div className="card-body">
-              <EditarCalificacionesTab 
-                calificaciones={calificaciones} 
+              <EditarCalificacionesTab
+                calificaciones={calificaciones}
                 alumnoId={id}
                 onCalificacionesActualizadas={fetchCalificaciones}
               />
@@ -566,8 +645,8 @@ const AlumnoDetalle = () => {
               </h5>
             </div>
             <div className="card-body">
-              <CanalizacionForm 
-                alumno_id={id} 
+              <CanalizacionForm
+                alumno_id={id}
                 nombreAlumno={`${alumno.Nombre} ${alumno.Primer_Ap} ${alumno.Segundo_Ap || ''}`}
               />
             </div>

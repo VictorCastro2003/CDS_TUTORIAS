@@ -7,48 +7,56 @@ export const obtenerEstadisticas = async (req, res) => {
   try {
     const { tutorId, division } = req.query;
     const periodoActivo = await Periodo.findOne({ where: { activo: true } });
-    
+
     let whereClauseAlumnos = {};
     let whereClauseCanalizaciones = {};
     let whereClauseAlertas = {};
-    
+
     // Filtros según el rol
+    // ✅ FILTRO POR DIVISIÓN - Solo para Jefe de División
     if (division) {
-      // Jefe de División
+      console.log(`📊 Filtrando estadísticas por división: ${division}`);
+      // Jefe de División - Solo su carrera
       whereClauseAlumnos.Carrera = division;
-      
-      // Para canalizaciones y alertas, necesitamos los IDs de alumnos
+
+      // Para canalizaciones y alertas, necesitamos los IDs de alumnos de esa división
       const alumnosDivision = await Alumno.findAll({
         where: { Carrera: division },
         attributes: ['id']
       });
       const alumnoIds = alumnosDivision.map(a => a.id);
-      
-      whereClauseCanalizaciones.alumno_id = { [Op.in]: alumnoIds };
-      whereClauseAlertas.alumno_id = { [Op.in]: alumnoIds };
+
+      if (alumnoIds.length > 0) {
+        whereClauseCanalizaciones.alumno_id = { [Op.in]: alumnoIds };
+        whereClauseAlertas.alumno_id = { [Op.in]: alumnoIds };
+      } else {
+        // No hay alumnos en esta división
+        whereClauseCanalizaciones.alumno_id = { [Op.in]: [-1] }; // ID imposible
+        whereClauseAlertas.alumno_id = { [Op.in]: [-1] };
+      }
     } else if (tutorId) {
       // Tutor - obtener alumnos de sus grupos
       const gruposTutor = await Grupo.findAll({
-        where: { 
+        where: {
           tutor_id: tutorId,
           periodo_id: periodoActivo?.id
         },
         attributes: ['id']
       });
-      
+
       const gruposIds = gruposTutor.map(g => g.id);
-      
+
       if (gruposIds.length > 0) {
         const asignaciones = await AlumnoGrupo.findAll({
-          where: { 
+          where: {
             grupo_id: { [Op.in]: gruposIds },
             periodo_id: periodoActivo?.id
           },
           attributes: ['alumno_id']
         });
-        
+
         const alumnoIds = [...new Set(asignaciones.map(a => a.alumno_id))];
-        
+
         if (alumnoIds.length > 0) {
           whereClauseAlumnos.id = { [Op.in]: alumnoIds };
           whereClauseCanalizaciones.alumno_id = { [Op.in]: alumnoIds };
@@ -82,10 +90,11 @@ export const obtenerEstadisticas = async (req, res) => {
         });
       }
     }
-    
+    // Si no hay division ni tutorId, es Coordinación - ve TODO
+
     // Total de alumnos
     const totalAlumnos = await Alumno.count({ where: whereClauseAlumnos });
-    
+
     // Canalizaciones activas
     const canalizacionesActivas = await Canalizacion.count({
       where: {
@@ -93,7 +102,7 @@ export const obtenerEstadisticas = async (req, res) => {
         estado: { [Op.in]: ['pendiente', 'en seguimiento'] }
       }
     });
-    
+
     // Alumnos por carrera
     const alumnosPorCarrera = await Alumno.findAll({
       where: whereClauseAlumnos,
@@ -103,7 +112,7 @@ export const obtenerEstadisticas = async (req, res) => {
       ],
       group: ['Carrera']
     });
-    
+
     // Canalizaciones por tipo
     const canalizacionesPorTipo = await Canalizacion.findAll({
       where: whereClauseCanalizaciones,
@@ -113,12 +122,12 @@ export const obtenerEstadisticas = async (req, res) => {
       ],
       group: ['tipo_canalizacion']
     });
-    
+
     // Alertas activas por tipo
     const alertasActivas = await Alerta.findAll({
-      where: { 
+      where: {
         ...whereClauseAlertas,
-        estado: 'activa' 
+        estado: 'activa'
       },
       attributes: [
         'tipo_alerta',
@@ -126,7 +135,7 @@ export const obtenerEstadisticas = async (req, res) => {
       ],
       group: ['tipo_alerta']
     });
-    
+
     // Alumnos en riesgo (con 2+ materias reprobadas)
     let alumnosEnRiesgo = 0;
     if (periodoActivo) {
@@ -143,10 +152,10 @@ export const obtenerEstadisticas = async (req, res) => {
         group: ['alumno_id'],
         having: sequelize.literal('COUNT(id) >= 2')
       });
-      
+
       alumnosEnRiesgo = materiasReprobadas.length;
     }
-    
+
     // Faltas recientes (alumnos con alertas de faltas activas)
     const faltasRecientes = await Alerta.count({
       where: {
@@ -155,7 +164,7 @@ export const obtenerEstadisticas = async (req, res) => {
         estado: 'activa'
       }
     });
-    
+
     // Promedio general
     let promedioGeneral = 0;
     if (periodoActivo) {
@@ -169,9 +178,9 @@ export const obtenerEstadisticas = async (req, res) => {
         ],
         raw: true
       });
-      
-      promedioGeneral = promedioResult?.promedio 
-        ? parseFloat(promedioResult.promedio).toFixed(2) 
+
+      promedioGeneral = promedioResult?.promedio
+        ? parseFloat(promedioResult.promedio).toFixed(2)
         : 0;
     }
 
@@ -188,9 +197,9 @@ export const obtenerEstadisticas = async (req, res) => {
     });
   } catch (error) {
     console.error('Error obteniendo estadísticas:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Error al obtener estadísticas',
-      error: error.message 
+      error: error.message
     });
   }
 };

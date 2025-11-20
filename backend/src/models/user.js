@@ -4,23 +4,23 @@ import { DataTypes } from 'sequelize';
 import sequelize from '../config/database.js';
 
 const User = sequelize.define('User', {
-  id: { 
-    type: DataTypes.INTEGER.UNSIGNED, 
-    primaryKey: true, 
-    autoIncrement: true 
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true
   },
-  name: { 
-    type: DataTypes.STRING, 
-    allowNull: false 
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
   },
-  password: { 
-    type: DataTypes.STRING, 
-    allowNull: false 
+  password: {
+    type: DataTypes.STRING,
+    allowNull: false
   },
-  rol: { 
-    type: DataTypes.ENUM("coordinacion", "jefeDivision", "tutor", "docente", "direccion"), 
-    allowNull: false, 
-    defaultValue: 'tutor' 
+  rol: {
+    type: DataTypes.ENUM("coordinacion", "jefeDivision", "tutor", "docente", "direccion"),
+    allowNull: false,
+    defaultValue: 'tutor'
   }
 }, {
   tableName: 'users',

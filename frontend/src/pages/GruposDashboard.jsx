@@ -24,7 +24,7 @@ const GruposDashboard = () => {
   const [alumnosDisponibles, setAlumnosDisponibles] = useState([]);
   const [tutores, setTutores] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Estados de modales
   const [showModalGrupo, setShowModalGrupo] = useState(false);
   const [showModalAsignarAlumnos, setShowModalAsignarAlumnos] = useState(false);
@@ -36,7 +36,7 @@ const GruposDashboard = () => {
   const [showModalEstadisticas, setShowModalEstadisticas] = useState(false);
   const [showModalCanalizaciones, setShowModalCanalizaciones] = useState(false);
   const [showModalEstadisticasGenerales, setShowModalEstadisticasGenerales] = useState(false);
-  
+
   const [searchAlumno, setSearchAlumno] = useState('');
   const [grupoEditar, setGrupoEditar] = useState(null);
   const [mostrarTodosAlumnos, setMostrarTodosAlumnos] = useState(false);
@@ -101,7 +101,7 @@ const GruposDashboard = () => {
     try {
       const data = await fetchWithAuth(`${API_BASE}/periodos`);
       setPeriodos(data);
-      
+
       const activo = data.find(p => p.activo);
       if (activo) {
         setPeriodoSeleccionado(activo);
@@ -118,7 +118,7 @@ const GruposDashboard = () => {
 
   const fetchGrupos = async () => {
     if (!periodoSeleccionado) return;
-    
+
     try {
       setLoading(true);
       const data = await fetchWithAuth(`${API_BASE}/grupos`);
@@ -134,7 +134,7 @@ const GruposDashboard = () => {
     try {
       setLoadingEstadisticas(true);
       setShowModalEstadisticas(true);
-      
+
       const data = await fetchWithAuth(`${API_BASE}/grupos/${grupoId}/estadisticas`);
       setEstadisticasGrupo(data);
     } catch (error) {
@@ -149,7 +149,7 @@ const GruposDashboard = () => {
     try {
       setLoadingEstadisticas(true);
       setShowModalEstadisticasGenerales(true);
-      
+
       // Usar la misma lógica que Dashboard.jsx
       const data = await fetchWithAuth(`${API_BASE}/estadisticas`);
       setEstadisticasGrupo(data); // Reutilizar el mismo estado
@@ -186,7 +186,7 @@ const GruposDashboard = () => {
       if (!grupo) return;
 
       let url = `${API_BASE}/grupos/${grupoId}/alumnos-disponibles`;
-      
+
       if (!mostrarTodosAlumnos) {
         url += `?semestre=${grupo.semestre}&carrera=${encodeURIComponent(grupo.carrera)}`;
       }
@@ -240,7 +240,7 @@ const GruposDashboard = () => {
         method: 'POST',
         body: JSON.stringify({ alumnoId })
       });
-      
+
       Swal.fire('Éxito', 'Alumno asignado correctamente', 'success');
       await fetchAlumnosDisponibles(selectedGrupo);
       await fetchAlumnosGrupo(selectedGrupo);
@@ -266,7 +266,7 @@ const GruposDashboard = () => {
         await fetchWithAuth(`${API_BASE}/grupos/${selectedGrupo}/alumnos/${alumnoId}`, {
           method: 'DELETE'
         });
-        
+
         Swal.fire('¡Removido!', 'Alumno removido del grupo', 'success');
         await fetchAlumnosGrupo(selectedGrupo);
         fetchGrupos();
@@ -292,9 +292,9 @@ const GruposDashboard = () => {
         await fetchWithAuth(`${API_BASE}/alumnos/${alumnoId}`, {
           method: 'DELETE'
         });
-        
+
         Swal.fire('¡Eliminado!', 'Alumno eliminado del sistema', 'success');
-        
+
         if (selectedGrupo) {
           await fetchAlumnosGrupo(selectedGrupo);
         }
@@ -346,7 +346,7 @@ const GruposDashboard = () => {
                   <label className="form-label mb-1 fw-bold small">
                     <i className="fas fa-calendar-alt me-1"></i>Periodo:
                   </label>
-                  <select 
+                  <select
                     className="form-select form-select-sm"
                     value={periodoSeleccionado?.id || ''}
                     onChange={(e) => {
@@ -368,7 +368,7 @@ const GruposDashboard = () => {
                     <div>
                       <small className="text-muted d-block">
                         <i className="fas fa-calendar-check me-1"></i>
-                        {new Date(periodoSeleccionado.fecha_inicio).toLocaleDateString()} - 
+                        {new Date(periodoSeleccionado.fecha_inicio).toLocaleDateString()} -
                         {new Date(periodoSeleccionado.fecha_fin).toLocaleDateString()}
                       </small>
                       <span className={`badge ${esPeriodoActivo ? 'bg-success' : 'bg-secondary'} mt-1`}>
@@ -381,7 +381,7 @@ const GruposDashboard = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Botones principales */}
         <div className="col-md-5">
           <div className="row g-2">
@@ -399,27 +399,27 @@ const GruposDashboard = () => {
                 </div>
               </>
             )}
-            
+
             <div className="col-6">
-              <button 
-                className="btn btn-info btn-sm text-white w-100" 
+              <button
+                className="btn btn-info btn-sm text-white w-100"
                 onClick={() => setShowModalCanalizaciones(true)}
               >
                 <i className="fas fa-clipboard-list me-1"></i>
                 Canalizaciones
               </button>
             </div>
-            
+
             <div className="col-6">
-              <button 
-                className="btn btn-warning btn-sm w-100" 
+              <button
+                className="btn btn-warning btn-sm w-100"
                 onClick={fetchEstadisticasGenerales}
               >
                 <i className="fas fa-chart-pie me-1"></i>
                 Estadísticas
               </button>
             </div>
-            
+
             {puedeModificar && (
               <div className="col-12">
                 <button className="btn btn-danger btn-sm w-100" onClick={() => setShowModalCerrarPeriodo(true)}>
@@ -455,7 +455,7 @@ const GruposDashboard = () => {
                       className={`list-group-item ${selectedGrupo === grupo.id ? 'active' : ''}`}
                     >
                       <div className="d-flex justify-content-between align-items-start">
-                        <div 
+                        <div
                           style={{ cursor: 'pointer' }}
                           className="flex-grow-1 me-2"
                           onClick={() => fetchAlumnosGrupo(grupo.id)}
@@ -467,22 +467,20 @@ const GruposDashboard = () => {
                             {grupo.carrera}
                           </small>
                           <div className="mt-2">
-                            <span className={`badge ${
-                              selectedGrupo === grupo.id ? 'bg-light text-primary' : 'bg-primary'
-                            }`}>
+                            <span className={`badge ${selectedGrupo === grupo.id ? 'bg-light text-primary' : 'bg-primary'
+                              }`}>
                               {grupo.total_alumnos || 0} alumnos
                             </span>
                             {grupo.tutor && (
-                              <small className={`d-block mt-1 ${
-                                selectedGrupo === grupo.id ? 'text-white-50' : 'text-muted'
-                              }`}>
+                              <small className={`d-block mt-1 ${selectedGrupo === grupo.id ? 'text-white-50' : 'text-muted'
+                                }`}>
                                 <i className="fas fa-user-check me-1"></i>
                                 {grupo.tutor.name}
                               </small>
                             )}
                           </div>
                         </div>
-                       
+
                         {puedeModificar && (
                           <div className="d-flex flex-column gap-2">
                             <button
@@ -497,7 +495,7 @@ const GruposDashboard = () => {
                               <i className="fas fa-chart-bar me-1"></i>
                               Estadísticas
                             </button>
-                            
+
                             <button
                               className="btn btn-warning"
                               onClick={(e) => {
@@ -511,7 +509,7 @@ const GruposDashboard = () => {
                               <i className="fas fa-edit me-1"></i>
                               Editar
                             </button>
-                            
+
                             <button
                               className="btn btn-info"
                               onClick={(e) => {
@@ -525,7 +523,7 @@ const GruposDashboard = () => {
                               <i className="fas fa-user-plus me-1"></i>
                               Tutor
                             </button>
-                            
+
                             <button
                               className="btn btn-danger"
                               onClick={(e) => {
@@ -618,7 +616,7 @@ const GruposDashboard = () => {
                           </td>
                           <td>
                             <div className="d-flex gap-2 justify-content-center flex-wrap">
-                              <button 
+                              <button
                                 className="btn btn-primary"
                                 onClick={() => navigate(`/alumnos/${alumno.id}`)}
                                 title="Ver detalles"
@@ -627,7 +625,7 @@ const GruposDashboard = () => {
                                 <i className="fas fa-eye me-1"></i>
                                 Ver
                               </button>
-                              
+
                               {puedeModificar && (
                                 <>
                                   <button
@@ -642,7 +640,7 @@ const GruposDashboard = () => {
                                     <i className="fas fa-edit me-1"></i>
                                     Editar
                                   </button>
-                                  
+
                                   <button
                                     className="btn btn-danger"
                                     onClick={() => handleEliminarAlumno(
@@ -655,7 +653,7 @@ const GruposDashboard = () => {
                                     <i className="fas fa-trash me-1"></i>
                                     Eliminar
                                   </button>
-                                  
+
                                   <button
                                     className="btn btn-secondary"
                                     onClick={() => handleRemoverAlumno(

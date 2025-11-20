@@ -8,6 +8,9 @@ export default function VistaCanalizaciones({ alumno_id }) {
   const [canalizaciones, setCanalizaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroRol, setFiltroRol] = useState(null);
+  const [contrarreferencias, setContrarreferencias] = useState({});
+  const [userRole, setUserRole] = useState('');
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
     obtenerDatosUsuario();
@@ -22,6 +25,8 @@ export default function VistaCanalizaciones({ alumno_id }) {
         id: decoded.id,
         division: decoded.division
       });
+      setUserRole(decoded.rol);
+      setUserId(decoded.id);
     }
   };
 
@@ -35,9 +40,9 @@ export default function VistaCanalizaciones({ alumno_id }) {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      
+
       let url = 'http://localhost:4000/api/canalizaciones';
-      
+
       // Filtrar según el contexto
       if (alumno_id) {
         // Si viene alumno_id, mostrar solo las de ese alumno (vista detalle)
@@ -51,7 +56,7 @@ export default function VistaCanalizaciones({ alumno_id }) {
         }
         // coordinacion no necesita filtro, ve todas
       }
-      
+
       const response = await axios.get(url, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -59,6 +64,9 @@ export default function VistaCanalizaciones({ alumno_id }) {
       });
 
       setCanalizaciones(response.data);
+
+      // Cargar contrareferencias para cada canalización
+      await cargarTodasContrareferencias(response.data);
     } catch (error) {
       console.error("Error al cargar canalizaciones:", error);
       Swal.fire({
@@ -68,6 +76,31 @@ export default function VistaCanalizaciones({ alumno_id }) {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cargarTodasContrareferencias = async (canalizacionesList) => {
+    try {
+      const token = localStorage.getItem('token');
+      const contrareferenciasMap = {};
+
+      for (const can of canalizacionesList) {
+        try {
+          const response = await axios.get(
+            `http://localhost:4000/api/contrarreferencias/canalizacion/${can.id}`,
+            {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }
+          );
+          contrareferenciasMap[can.id] = response.data;
+        } catch (error) {
+          contrareferenciasMap[can.id] = [];
+        }
+      }
+
+      setContrarreferencias(contrareferenciasMap);
+    } catch (error) {
+      console.error("Error al cargar contrareferencias:", error);
     }
   };
 
@@ -92,7 +125,7 @@ export default function VistaCanalizaciones({ alumno_id }) {
       });
 
       const token = localStorage.getItem('token');
-      
+
       const response = await axios.get(
         `http://localhost:4000/api/canalizaciones/${canalizacionId}/report/word`,
         {
@@ -103,7 +136,6 @@ export default function VistaCanalizaciones({ alumno_id }) {
         }
       );
 
-      // Crear enlace de descarga
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -128,6 +160,171 @@ export default function VistaCanalizaciones({ alumno_id }) {
         text: error.response?.data?.error || 'No se pudo generar el reporte',
       });
     }
+  };
+
+  // 🆕 Crear contrarreferencia
+  const crearContrarreferencia = async (canalizacion) => {
+    const { value: formValues } = await Swal.fire({
+      title: `Crear Contrarreferencia ${canalizacion.tipo_canalizacion === 'academica' ? 'Académica' : 'Psicológica'}`,
+      html: `
+        <div class="text-start">
+          <p><strong>Alumno:</strong> ${canalizacion.alumno?.Nombre} ${canalizacion.alumno?.Primer_Ap}</p>
+          <p><strong>Tipo:</strong> ${canalizacion.tipo_canalizacion}</p>
+          <hr>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Contenido de la Contrarreferencia *</label>
+            <textarea 
+              id="contenido" 
+              class="form-control" 
+              rows="5" 
+              placeholder="Describe el seguimiento, resultados de la asesoría/atención..."
+              required
+            ></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Recomendaciones</label>
+            <textarea 
+              id="recomendaciones" 
+              class="form-control" 
+              rows="3" 
+              placeholder="Recomendaciones adicionales..."
+            ></textarea>
+          </div>
+        </div>
+      `,
+      width: 700,
+      showCancelButton: true,
+      confirmButtonText: 'Crear Contrarreferencia',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#28a745',
+      preConfirm: () => {
+        const contenido = document.getElementById('contenido').value;
+        const recomendaciones = document.getElementById('recomendaciones').value;
+
+        if (!contenido) {
+          Swal.showValidationMessage('El contenido es obligatorio');
+          return false;
+        }
+
+        return { contenido, recomendaciones };
+      }
+    });
+
+    if (formValues) {
+      try {
+        Swal.fire({
+          title: 'Creando contrarreferencia...',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        const token = localStorage.getItem('token');
+
+        await axios.post(
+          'http://localhost:4000/api/contrarreferencias',
+          {
+            canalizacion_id: canalizacion.id,
+            generada_por: userId,
+            tipo: canalizacion.tipo_canalizacion,
+            contenido: formValues.contenido,
+            recomendaciones: formValues.recomendaciones
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        Swal.fire({
+          icon: 'success',
+          title: '¡Contrarreferencia Creada!',
+          html: `
+            <p>La contrarreferencia ha sido creada y enviada automáticamente a:</p>
+            <ul class="text-start">
+              ${canalizacion.tipo_canalizacion === 'academica' ? `
+                <li>✅ Jefe de División</li>
+                <li>✅ Coordinación de Tutorías</li>
+                <li>✅ Tutor</li>
+              ` : `
+                <li>✅ Jefe de División</li>
+                <li>✅ Tutor</li>
+              `}
+            </ul>
+          `,
+          confirmButtonColor: '#28a745'
+        });
+
+        await cargarCanalizaciones();
+
+      } catch (error) {
+        console.error("Error al crear contrarreferencia:", error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: error.response?.data?.message || 'No se pudo crear la contrarreferencia',
+        });
+      }
+    }
+  };
+
+  // ✅ Función actualizada para ver contrarreferencias
+  const verContrarreferencias = async (canalizacion) => {
+    const contras = contrarreferencias[canalizacion.id] || [];
+
+    if (contras.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Sin Contrarreferencias',
+        text: 'Esta canalización aún no tiene contrarreferencias',
+      });
+      return;
+    }
+
+    const contrasHTML = contras.map((contra, index) => `
+    <div class="card mb-3 text-start">
+      <div class="card-header bg-${contra.tipo_respuesta === 'academica' ? 'primary' : 'danger'} text-white">
+        <strong>Contrarreferencia ${contra.tipo_respuesta === 'academica' ? 'Académica' : 'Psicológica'} #${index + 1}</strong>
+        <br>
+        <small>Atendida el ${new Date(contra.fecha_atencion).toLocaleDateString('es-MX')}</small>
+        <span class="badge bg-light text-dark ms-2">${contra.estado}</span>
+      </div>
+      <div class="card-body">
+        <p><strong>Respondida por:</strong> ${contra.generador?.name || 'N/A'}</p>
+        
+        <p><strong>Descripción de la Atención:</strong></p>
+        <p class="text-muted">${contra.descripcion_atencion}</p>
+        
+        ${contra.acciones_realizadas ? `
+          <p><strong>Acciones Realizadas:</strong></p>
+          <p class="text-muted">${contra.acciones_realizadas}</p>
+        ` : ''}
+        
+        ${contra.recomendaciones ? `
+          <p><strong>Recomendaciones:</strong></p>
+          <p class="text-muted">${contra.recomendaciones}</p>
+        ` : ''}
+        
+        ${contra.observaciones ? `
+          <p><strong>Observaciones:</strong></p>
+          <p class="text-muted">${contra.observaciones}</p>
+        ` : ''}
+      </div>
+    </div>
+  `).join('');
+
+    Swal.fire({
+      title: 'Contrarreferencias',
+      html: `
+      <div style="max-height: 500px; overflow-y: auto;">
+        ${contrasHTML}
+      </div>
+    `,
+      width: 800,
+      showCloseButton: true,
+      showConfirmButton: false
+    });
   };
 
   const eliminarCanalizacion = async (canalizacionId) => {
@@ -159,7 +356,6 @@ export default function VistaCanalizaciones({ alumno_id }) {
             'success'
           );
 
-          // Recargar la lista
           cargarCanalizaciones();
         } catch (error) {
           console.error("Error al eliminar:", error);
@@ -196,8 +392,8 @@ export default function VistaCanalizaciones({ alumno_id }) {
   const getTituloSegunRol = () => {
     if (alumno_id) return 'Canalizaciones del Alumno';
     if (!filtroRol) return 'Canalizaciones Registradas';
-    
-    switch(filtroRol.rol) {
+
+    switch (filtroRol.rol) {
       case 'tutor':
         return 'Mis Canalizaciones';
       case 'jefeDivision':
@@ -254,12 +450,15 @@ export default function VistaCanalizaciones({ alumno_id }) {
                 <th>Tutor</th>
                 <th>Área</th>
                 <th>Estado</th>
+                <th>Contrarref.</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {canalizaciones.map((can) => {
                 const estadoBadge = getEstadoBadge(can.estado);
+                const numContras = (contrarreferencias[can.id] || []).length;
+
                 return (
                   <tr key={can.id}>
                     <td>
@@ -302,62 +501,96 @@ export default function VistaCanalizaciones({ alumno_id }) {
                         {estadoBadge.text}
                       </span>
                     </td>
+                    <td className="text-center">
+                      {numContras > 0 ? (
+                        <span
+                          className="badge bg-success"
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => verContrarreferencias(can)}
+                          title="Ver contrareferencias"
+                        >
+                          {numContras} <i className="bi bi-eye"></i>
+                        </span>
+                      ) : (
+                        <span className="badge bg-secondary">0</span>
+                      )}
+                    </td>
                     <td>
                       <div className="d-flex gap-2 flex-wrap">
                         {/* Botón detalles */}
-                       <button
-  className="btn btn-sm btn-primary"
-  onClick={() => {
-    // ⭐ Formatear tipo de atención
-    const tipoAtencionTexto = can.tipo_atencion === 'personal' 
-      ? '👤 Solicitud Personal' 
-      : can.tipo_atencion === 'tutor' 
-        ? '👨‍🏫 Referido por Tutor' 
-        : '👨‍🏫 Referido por Docente';
-    
-    Swal.fire({
-      title: 'Detalles de Canalización',
-      html: `
-        <div class="text-start">
-          ${can.tipo_atencion ? `
-            <div class="alert alert-info mb-2">
-              <strong>📋 Tipo de Atención:</strong><br>
-              ${tipoAtencionTexto}
-            </div>
-          ` : ''}
-          
-          ${can.nota_derivacion ? `
-            <div class="alert alert-secondary mb-2">
-              <strong>📝 Nota de Derivación:</strong><br>
-              ${can.nota_derivacion}
-            </div>
-          ` : ''}
-          
-          <p><strong>Motivo:</strong> ${can.motivo}</p>
-          
-          ${can.problematica_identificada ? `
-            <p><strong>Problemática:</strong> ${can.problematica_identificada}</p>
-          ` : ''}
-          
-          ${can.servicio_solicitado ? `
-            <p><strong>Servicio:</strong> ${can.servicio_solicitado}</p>
-          ` : ''}
-          
-          ${can.observaciones ? `
-            <p><strong>Observaciones:</strong> ${can.observaciones}</p>
-          ` : ''}
-        </div>
-      `,
-      width: 650,
-      customClass: {
-        htmlContainer: 'text-start'
-      }
-    });
-  }}
->
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => {
+                            const tipoAtencionTexto = can.tipo_atencion === 'personal'
+                              ? '👤 Solicitud Personal'
+                              : can.tipo_atencion === 'tutor'
+                                ? '👨‍🏫 Referido por Tutor'
+                                : '👨‍🏫 Referido por Docente';
+
+                            Swal.fire({
+                              title: 'Detalles de Canalización',
+                              html: `
+                                <div class="text-start">
+                                  ${can.tipo_atencion ? `
+                                    <div class="alert alert-info mb-2">
+                                      <strong>📋 Tipo de Atención:</strong><br>
+                                      ${tipoAtencionTexto}
+                                    </div>
+                                  ` : ''}
+                                  
+                                  ${can.nota_derivacion ? `
+                                    <div class="alert alert-secondary mb-2">
+                                      <strong>📝 Nota de Derivación:</strong><br>
+                                      ${can.nota_derivacion}
+                                    </div>
+                                  ` : ''}
+                                  
+                                  <p><strong>Motivo:</strong> ${can.motivo}</p>
+                                  
+                                  ${can.problematica_identificada ? `
+                                    <p><strong>Problemática:</strong> ${can.problematica_identificada}</p>
+                                  ` : ''}
+                                  
+                                  ${can.servicio_solicitado ? `
+                                    <p><strong>Servicio:</strong> ${can.servicio_solicitado}</p>
+                                  ` : ''}
+                                  
+                                  ${can.observaciones ? `
+                                    <p><strong>Observaciones:</strong> ${can.observaciones}</p>
+                                  ` : ''}
+                                </div>
+                              `,
+                              width: 650,
+                              customClass: {
+                                htmlContainer: 'text-start'
+                              }
+                            });
+                          }}
+                        >
                           <i className="bi bi-eye me-1"></i>
                           Ver
                         </button>
+
+                        {/* 🆕 Botón crear contrarreferencia */}
+                        <button
+                          className="btn btn-sm btn-success"
+                          title="Crear Contrarreferencia"
+                          onClick={() => crearContrarreferencia(can)}
+                        >
+                          <i className="bi bi-file-earmark-plus me-1"></i>
+                          Contrarreferencia
+                        </button>
+
+                        {/* 🆕 Botón ver contrareferencias */}
+                        {numContras > 0 && (
+                          <button
+                            className="btn btn-sm btn-info"
+                            title="Ver Contrareferencias"
+                            onClick={() => verContrarreferencias(can)}
+                          >
+                            <i className="bi bi-list-check me-1"></i> {numContras}
+                          </button>
+                        )}
 
                         {/* Botón descargar Word (solo psicológicas) */}
                         {can.tipo_canalizacion === 'psicologica' && (
@@ -391,8 +624,12 @@ export default function VistaCanalizaciones({ alumno_id }) {
         <div className="mt-3 p-3 bg-light rounded">
           <small className="text-muted">
             <i className="bi bi-info-circle me-2"></i>
-            <strong>Nota:</strong> Las canalizaciones psicológicas generan un reporte especial en formato Word.
-            Haz clic en el botón <i className="bi bi-file-earmark-word"></i> para descargarlo.
+            <strong>Nota:</strong>
+            <ul className="mb-0 mt-2">
+              <li>Usa <i className="bi bi-file-earmark-plus"></i> para crear una contrarreferencia</li>
+              <li>Usa <i className="bi bi-list-check"></i> para ver las contrareferencias existentes</li>
+              <li>Las canalizaciones psicológicas tienen reporte Word <i className="bi bi-file-earmark-word"></i></li>
+            </ul>
           </small>
         </div>
 

@@ -8,7 +8,7 @@ import "../styles/DashboardStyle.css";
 
 const DashboardMejorado = () => {
   const navigate = useNavigate();
-  
+
   const [alumnos, setAlumnos] = useState([]);
   const [estadisticas, setEstadisticas] = useState({
     totalAlumnos: 0,
@@ -39,9 +39,9 @@ const DashboardMejorado = () => {
       }
 
       const decoded = jwtDecode(token);
-      
+
       console.log("Usuario decodificado:", decoded);
-      
+
       // Bloquear coordinación
       if (decoded.rol === 'coordinacion') {
         navigate('/grupos-dashboard');
@@ -90,7 +90,7 @@ const DashboardMejorado = () => {
       } else if (decoded.rol === 'tutor' && decoded.id) {
         queryParams = `?tutorId=${decoded.id}`;
       }
-      
+
       const resEstadisticas = await fetch(`http://localhost:4000/api/estadisticas${queryParams}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -115,18 +115,18 @@ const DashboardMejorado = () => {
             "Content-Type": "application/json",
           },
         });
-        
+
         if (resAlertasGlobal.ok) {
           const todasLasAlertas = await resAlertasGlobal.json();
           const alertasTemp = {};
-          
+
           todasLasAlertas.forEach(alerta => {
             if (!alertasTemp[alerta.alumno_id]) {
               alertasTemp[alerta.alumno_id] = [];
             }
             alertasTemp[alerta.alumno_id].push(alerta);
           });
-          
+
           setAlertasMap(alertasTemp);
           console.log("Alertas cargadas:", Object.keys(alertasTemp).length, "alumnos con alertas");
         }
@@ -138,11 +138,11 @@ const DashboardMejorado = () => {
             "Content-Type": "application/json",
           },
         });
-        
+
         if (resCanalizacionesGlobal.ok) {
           const todasLasCanalizaciones = await resCanalizacionesGlobal.json();
           const canalizacionesTemp = {};
-          
+
           todasLasCanalizaciones.forEach(canalizacion => {
             if (canalizacion.estado === 'pendiente' || canalizacion.estado === 'en seguimiento') {
               if (!canalizacionesTemp[canalizacion.alumno_id]) {
@@ -151,7 +151,7 @@ const DashboardMejorado = () => {
               canalizacionesTemp[canalizacion.alumno_id].push(canalizacion);
             }
           });
-          
+
           setCanalizacionesMap(canalizacionesTemp);
           console.log("Canalizaciones cargadas:", Object.keys(canalizacionesTemp).length, "alumnos con canalizaciones");
         }
@@ -211,11 +211,11 @@ const DashboardMejorado = () => {
     const maxPagesToShow = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
     let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-    
+
     if (endPage - startPage + 1 < maxPagesToShow) {
       startPage = Math.max(1, endPage - maxPagesToShow + 1);
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
       pages.push(i);
     }
@@ -454,7 +454,7 @@ const DashboardMejorado = () => {
                     // ✅ Usar alertas y canalizaciones del mapa global
                     const tieneAlerta = alertasMap[alumno.id] && alertasMap[alumno.id].length > 0;
                     const tieneCanalizacion = canalizacionesMap[alumno.id] && canalizacionesMap[alumno.id].length > 0;
-                    
+
                     return (
                       <tr key={alumno.id}>
                         <td className="text-center">{alumno.Num_Control}</td>
@@ -519,7 +519,7 @@ const DashboardMejorado = () => {
               <div className="text-white">
                 Mostrando {startIndex + 1} a {Math.min(endIndex, sortedAlumnos.length)} de {sortedAlumnos.length} alumnos
               </div>
-              
+
               <nav>
                 <ul className="pagination mb-0">
                   <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
@@ -540,7 +540,7 @@ const DashboardMejorado = () => {
                       «
                     </button>
                   </li>
-                  
+
                   {getPageNumbers().map((page) => (
                     <li
                       key={page}
@@ -551,7 +551,7 @@ const DashboardMejorado = () => {
                       </button>
                     </li>
                   ))}
-                  
+
                   <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
                     <button
                       className="page-link"
