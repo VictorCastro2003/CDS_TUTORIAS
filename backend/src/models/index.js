@@ -1,12 +1,12 @@
 // models/index.js
 import sequelize from "../config/database.js";
-import Alumno from "./Alumno.js";
-import Materia from "./Materia.js";
+import Alumno from "./alerta.js";
+import Materia from "./materia.js";
 import AlumnoMateria from "./alumnoMateria.js";
 import User from "./user.js";
-import Grupo from "./Grupo.js";
+import Grupo from "./grupo.js";
 import AlumnoGrupo from "./alumnoGrupo.js";
-import Periodo from "./Periodo.js";
+import Periodo from "./periodo.js";
 import Canalizacion from "./canalizacion.js";
 import Alerta from "./alerta.js";
 import Asistencia from "./asistencia.js";
