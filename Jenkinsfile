@@ -5,6 +5,7 @@ pipeline {
         FRONTEND_DIR = "frontend"
         BACKEND_DIR = "backend"
         EC2_HOST = "98.80.218.98"
+        CI = "false"
     }
 
     stages {
@@ -20,16 +21,18 @@ pipeline {
         }
 
         /* ===========================
-         * INSTALL NODE DEPENDENCIES
+         * INSTALL DEPENDENCIES
          * =========================== */
         stage('Instalar dependencias') {
             steps {
                 echo "Instalando dependencias..."
 
+                // Backend
                 dir("${BACKEND_DIR}") {
                     sh "npm install"
                 }
 
+                // Frontend
                 dir("${FRONTEND_DIR}") {
                     sh "npm install"
                 }
@@ -42,12 +45,13 @@ pipeline {
         stage("Pruebas Backend (Jest)") {
             steps {
                 dir("${BACKEND_DIR}") {
+                    sh "chmod +x node_modules/.bin/jest || true"
                     sh "npm test -- --watchAll=false || true"
                 }
             }
         }
 
-        stage("Pruebas Frontend (React Testing Library)") {
+        stage("Pruebas Frontend (React)") {
             steps {
                 dir("${FRONTEND_DIR}") {
                     sh "npm test -- --watchAll=false || true"
@@ -81,8 +85,18 @@ pipeline {
         }
 
         /* ===========================
-         * SECURITY SCANS
+         * SECURITY TOOLS
          * =========================== */
+        stage('Instalar Python + Tools de seguridad') {
+            steps {
+                sh """
+                    apt update -y
+                    apt install -y python3 python3-pip
+                    pip3 install --break-system-packages semgrep detect-secrets checkov || true
+                """
+            }
+        }
+
         stage('Security - npm audit') {
             steps {
                 sh "npm audit --audit-level=high || true"
@@ -91,19 +105,15 @@ pipeline {
 
         stage('Security - Semgrep') {
             steps {
-                sh """
-                    pip3 install --user semgrep || true
-                    python3 -m semgrep --config auto --error || true
-                """
+                sh "semgrep --config auto || true"
             }
         }
 
         stage('Security - Secret Scanning') {
             steps {
                 sh """
-                    pip3 install --user detect-secrets || true
                     detect-secrets scan --all-files > detect-secrets-report.json || true
-                    cat detect-secrets-report.json || true
+                    cat detect-secrets-report.json
                 """
             }
         }
@@ -160,11 +170,7 @@ EOF
     }
 
     post {
-        success {
-            echo "Pipeline completado exitosamente 🎉"
-        }
-        failure {
-            echo "El pipeline falló. Revisar logs ❌"
-        }
+        success { echo "Pipeline completado exitosamente 🎉" }
+        failure { echo "El pipeline falló. Revisar logs ❌" }
     }
 }
