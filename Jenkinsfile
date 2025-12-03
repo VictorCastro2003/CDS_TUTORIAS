@@ -6,6 +6,8 @@ pipeline {
         BACKEND_DIR = "backend"
         EC2_HOST = "98.80.218.98"
         CI = "false"
+        // Path al entorno virtual de Python
+        SECURITY_TOOLS_PATH = "/opt/security-tools/bin"
     }
 
     stages {
@@ -64,6 +66,7 @@ pipeline {
          * =========================== */
         stage('Lint') {
             steps {
+                echo "Ejecutando linters..."
                 dir("${FRONTEND_DIR}") {
                     sh "npm run lint || true"
                 }
@@ -85,68 +88,102 @@ pipeline {
         }
 
         /* ===========================
-         * SECURITY TOOLS
+         * SECURITY TOOLS - npm audit
          * =========================== */
-        stage('Instalar Python + Tools de seguridad') {
-            steps {
-                script {
-                    // Opción 1: Usar sudo (requiere configuración en Jenkins)
-                    sh """
-                        sudo apt update -y || true
-                        sudo apt install -y python3 python3-pip || true
-                        pip3 install --user semgrep detect-secrets checkov || true
-                    """
-                    
-                    // Opción 2 (alternativa): Instalar solo para el usuario
-                    // sh """
-                    //     pip3 install --user semgrep detect-secrets checkov || true
-                    // """
-                }
-            }
-        }
-
         stage('Security - npm audit') {
             steps {
                 echo "Ejecutando npm audit..."
                 dir("${BACKEND_DIR}") {
-                    sh "npm audit --audit-level=high || true"
+                    sh """
+                        echo "=== Backend Security Audit ===" > ../npm-audit-report.txt
+                        npm audit --audit-level=moderate >> ../npm-audit-report.txt || true
+                    """
                 }
                 dir("${FRONTEND_DIR}") {
-                    sh "npm audit --audit-level=high || true"
+                    sh """
+                        echo "=== Frontend Security Audit ===" >> ../npm-audit-report.txt
+                        npm audit --audit-level=moderate >> ../npm-audit-report.txt || true
+                    """
                 }
+                sh "cat npm-audit-report.txt"
             }
         }
 
+        /* ===========================
+         * SECURITY TOOLS - Análisis estático
+         * =========================== */
         stage('Security - Semgrep') {
             steps {
-                echo "Ejecutando análisis con Semgrep..."
-                sh """
-                    export PATH=\$PATH:\$HOME/.local/bin
-                    semgrep --config auto --json --output semgrep-report.json || true
-                    cat semgrep-report.json || true
-                """
+                script {
+                    echo "Ejecutando análisis con Semgrep..."
+                    def semgrepExists = sh(
+                        script: "test -f ${SECURITY_TOOLS_PATH}/semgrep && echo 'yes' || echo 'no'",
+                        returnStdout: true
+                    ).trim()
+                    
+                    if (semgrepExists == 'yes') {
+                        sh """
+                            ${SECURITY_TOOLS_PATH}/semgrep --config auto \
+                                --json --output semgrep-report.json || true
+                            if [ -f semgrep-report.json ]; then
+                                cat semgrep-report.json
+                            fi
+                        """
+                    } else {
+                        echo "⚠️ Semgrep no está instalado. Saltando..."
+                        echo "Para instalarlo, ejecuta: docker exec -u root <container> /bin/bash -c 'python3 -m venv /opt/security-tools && /opt/security-tools/bin/pip install semgrep'"
+                    }
+                }
             }
         }
 
         stage('Security - Secret Scanning') {
             steps {
-                echo "Escaneando secretos con detect-secrets..."
-                sh """
-                    export PATH=\$PATH:\$HOME/.local/bin
-                    detect-secrets scan --all-files > detect-secrets-report.json || true
-                    cat detect-secrets-report.json
-                """
+                script {
+                    echo "Escaneando secretos con detect-secrets..."
+                    def detectSecretsExists = sh(
+                        script: "test -f ${SECURITY_TOOLS_PATH}/detect-secrets && echo 'yes' || echo 'no'",
+                        returnStdout: true
+                    ).trim()
+                    
+                    if (detectSecretsExists == 'yes') {
+                        sh """
+                            ${SECURITY_TOOLS_PATH}/detect-secrets scan --all-files \
+                                > detect-secrets-report.json || true
+                            if [ -f detect-secrets-report.json ]; then
+                                cat detect-secrets-report.json
+                            fi
+                        """
+                    } else {
+                        echo "⚠️ detect-secrets no está instalado. Saltando..."
+                        echo "Para instalarlo, ejecuta: docker exec -u root <container> /bin/bash -c '/opt/security-tools/bin/pip install detect-secrets'"
+                    }
+                }
             }
         }
 
         stage('Security - Checkov') {
             steps {
-                echo "Ejecutando análisis con Checkov..."
-                sh """
-                    export PATH=\$PATH:\$HOME/.local/bin
-                    checkov -d . --output json --output-file checkov-report.json || true
-                    cat checkov-report.json || true
-                """
+                script {
+                    echo "Ejecutando análisis con Checkov..."
+                    def checkovExists = sh(
+                        script: "test -f ${SECURITY_TOOLS_PATH}/checkov && echo 'yes' || echo 'no'",
+                        returnStdout: true
+                    ).trim()
+                    
+                    if (checkovExists == 'yes') {
+                        sh """
+                            ${SECURITY_TOOLS_PATH}/checkov -d . \
+                                --output json --output-file checkov-report.json || true
+                            if [ -f checkov-report.json ]; then
+                                cat checkov-report.json
+                            fi
+                        """
+                    } else {
+                        echo "⚠️ Checkov no está instalado. Saltando..."
+                        echo "Para instalarlo, ejecuta: docker exec -u root <container> /bin/bash -c '/opt/security-tools/bin/pip install checkov'"
+                    }
+                }
             }
         }
 
@@ -198,15 +235,13 @@ EOF
     post {
         success { 
             echo "✅ Pipeline completado exitosamente 🎉"
-            // Opcional: archivar reportes
-            archiveArtifacts artifacts: '*-report.json', allowEmptyArchive: true
+            archiveArtifacts artifacts: '*-report.json, *-report.txt', allowEmptyArchive: true
         }
         failure { 
             echo "❌ El pipeline falló. Revisar logs"
         }
         always {
-            echo "🔍 Limpiando workspace..."
-            cleanWs()
+            echo "🔍 Finalizando pipeline..."
         }
     }
 }
