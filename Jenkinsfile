@@ -89,29 +89,50 @@ pipeline {
          * =========================== */
         stage('Instalar Python + Tools de seguridad') {
             steps {
-                sh """
-                    apt update -y
-                    apt install -y python3 python3-pip
-                    pip3 install --break-system-packages semgrep detect-secrets checkov || true
-                """
+                script {
+                    // Opción 1: Usar sudo (requiere configuración en Jenkins)
+                    sh """
+                        sudo apt update -y || true
+                        sudo apt install -y python3 python3-pip || true
+                        pip3 install --user semgrep detect-secrets checkov || true
+                    """
+                    
+                    // Opción 2 (alternativa): Instalar solo para el usuario
+                    // sh """
+                    //     pip3 install --user semgrep detect-secrets checkov || true
+                    // """
+                }
             }
         }
 
         stage('Security - npm audit') {
             steps {
-                sh "npm audit --audit-level=high || true"
+                echo "Ejecutando npm audit..."
+                dir("${BACKEND_DIR}") {
+                    sh "npm audit --audit-level=high || true"
+                }
+                dir("${FRONTEND_DIR}") {
+                    sh "npm audit --audit-level=high || true"
+                }
             }
         }
 
         stage('Security - Semgrep') {
             steps {
-                sh "semgrep --config auto || true"
+                echo "Ejecutando análisis con Semgrep..."
+                sh """
+                    export PATH=\$PATH:\$HOME/.local/bin
+                    semgrep --config auto --json --output semgrep-report.json || true
+                    cat semgrep-report.json || true
+                """
             }
         }
 
         stage('Security - Secret Scanning') {
             steps {
+                echo "Escaneando secretos con detect-secrets..."
                 sh """
+                    export PATH=\$PATH:\$HOME/.local/bin
                     detect-secrets scan --all-files > detect-secrets-report.json || true
                     cat detect-secrets-report.json
                 """
@@ -120,7 +141,12 @@ pipeline {
 
         stage('Security - Checkov') {
             steps {
-                sh "checkov -d . || true"
+                echo "Ejecutando análisis con Checkov..."
+                sh """
+                    export PATH=\$PATH:\$HOME/.local/bin
+                    checkov -d . --output json --output-file checkov-report.json || true
+                    cat checkov-report.json || true
+                """
             }
         }
 
@@ -170,7 +196,17 @@ EOF
     }
 
     post {
-        success { echo "Pipeline completado exitosamente 🎉" }
-        failure { echo "El pipeline falló. Revisar logs ❌" }
+        success { 
+            echo "✅ Pipeline completado exitosamente 🎉"
+            // Opcional: archivar reportes
+            archiveArtifacts artifacts: '*-report.json', allowEmptyArchive: true
+        }
+        failure { 
+            echo "❌ El pipeline falló. Revisar logs"
+        }
+        always {
+            echo "🔍 Limpiando workspace..."
+            cleanWs()
+        }
     }
 }
