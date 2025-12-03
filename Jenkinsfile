@@ -105,7 +105,7 @@ pipeline {
                 echo "Actualizando archivo backend_version.txt en EC2..."
                 sshagent(credentials: ['ec2-jenkins-key']) {
                     sh '''
-ssh -o StrictHostKeyChecking=no ec2-user@3.15.205.151 << 'EOF'
+ssh -o StrictHostKeyChecking=no ec2-user@98.80.218.98 << 'EOF'
   cd DevOps_ProyectoFinal/backend
 
   VERSION_FILE="backend_version.txt"
