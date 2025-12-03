@@ -124,14 +124,15 @@ pipeline {
                     if (semgrepExists == 'yes') {
                         sh """
                             ${SECURITY_TOOLS_PATH}/semgrep --config auto \
-                                --json --output semgrep-report.json || true
+                                --json --output semgrep-report.json || echo '{"results": [], "error": "Semgrep execution failed"}' > semgrep-report.json
                             if [ -f semgrep-report.json ]; then
+                                echo "=== Semgrep Report ==="
                                 cat semgrep-report.json
                             fi
                         """
                     } else {
                         echo "⚠️ Semgrep no está instalado. Saltando..."
-                        echo "Para instalarlo, ejecuta: docker exec -u root <container> /bin/bash -c 'python3 -m venv /opt/security-tools && /opt/security-tools/bin/pip install semgrep'"
+                        echo "Para instalarlo: docker exec -u root <container> /opt/security-tools/bin/pip install --upgrade semgrep click"
                     }
                 }
             }
