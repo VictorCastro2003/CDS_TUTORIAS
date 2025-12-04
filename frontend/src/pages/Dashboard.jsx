@@ -443,6 +443,8 @@ const DashboardMejorado = () => {
               <tbody>
                 {currentAlumnos.length > 0 ? (
                   currentAlumnos.map((alumno) => {
+                      console.log('🔍 Alumno completo:', alumno); // ← AGREGA ESTO
+                      console.log('🆔 ID del alumno:', alumno.id);
                     // ✅ Usar alertas y canalizaciones del mapa global
                     const tieneAlerta = alertasMap[alumno.id] && alertasMap[alumno.id].length > 0;
                     const tieneCanalizacion = canalizacionesMap[alumno.id] && canalizacionesMap[alumno.id].length > 0;

@@ -18,14 +18,13 @@ const router = express.Router();
 
 router.use('/auth', authRoutes);
 router.use('/users', usersRoutes);
-router.use('/alumnos', alumnosRoutes); // ✅ Esta ruta ya incluye /alumnos/:id/calificaciones
+router.use('/alumnos', alumnosRoutes); 
 router.use('/grupos', gruposRoutes);
 router.use('/canalizaciones', canalizacionesRoutes);
 router.use('/periodos', periodosRoutes);
 router.use('/materias', materiasRoutes);
 router.use('/estadisticas', estadisticasRoutes);
 router.use('/alertas', alertasRoutes);
-// ❌ ELIMINAR ESTA LÍNEA - Ya no se necesita
 // router.use('/calificaciones', calificacionesRoutes);
 router.use('/notificaciones', notificacionesRoutes);
 router.use('/workflow', workflowRoutes);
