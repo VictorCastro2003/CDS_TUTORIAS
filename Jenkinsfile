@@ -188,7 +188,7 @@ ssh -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} << 'EOF'
 
   cd backend
   npm install
-  pm2 restart backend || pm2 start index.js --name backend
+  pm2 restart server || pm2 start server.js --name server
   pm2 save
 
   cd ../frontend
