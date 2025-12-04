@@ -8,7 +8,8 @@
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest --watchAll=false",
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "sequelize": "sequelize"
+    "sequelize": "sequelize",
+    "lint": "eslint ."
   },
   "keywords": [],
   "author": "",
