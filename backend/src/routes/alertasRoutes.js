@@ -1,11 +1,24 @@
 import express from 'express';
-import * as alertaController from '../controllers/alertaController.js';
-import verificarToken from '../middlewares/auth.js';
+import {
+  obtenerTodasAlertas,
+  obtenerAlertasAlumno,
+  crearAlerta,
+  actualizarEstadoAlerta
+} from '../controllers/alertaController.js';
+import verifyToken from '../middlewares/verifyToken.js';
 
 const router = express.Router();
-router.get('/', verificarToken, alertaController.obtenerTodasAlertas);
-router.get('/alumno/:alumnoId', verificarToken, alertaController.obtenerAlertasAlumno);
-router.post('/', verificarToken, alertaController.crearAlerta);
-router.put('/:id/estado', verificarToken, alertaController.actualizarEstadoAlerta);
+
+// ✅ Obtener todas las alertas (con filtros opcionales)
+router.get('/', verifyToken, obtenerTodasAlertas);
+
+// ✅ Obtener alertas de un alumno específico
+router.get('/alumno/:alumnoId', verifyToken, obtenerAlertasAlumno);
+
+// ✅ Crear nueva alerta
+router.post('/', verifyToken, crearAlerta);
+
+// ✅ Actualizar estado de alerta
+router.put('/:id/estado', verifyToken, actualizarEstadoAlerta);
 
 export default router;
