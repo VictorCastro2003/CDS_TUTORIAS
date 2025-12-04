@@ -5,20 +5,25 @@ export const getAlumnos = async (req, res) => {
   try {
     const { rol, id: userId } = req.user;
     
+    console.log('📋 getAlumnos - Usuario:', { rol, userId });
+    
     let alumnos;
     
     if (rol === 'tutor') {
       // Tutor solo ve sus alumnos tutorados del periodo activo
-      const Periodo = (await import('../models/Periodo.js')).default;
+      const Periodo = (await import('../models/periodo.js')).default;
       const sequelize = (await import('../config/database.js')).default;
       
       const periodoActivo = await Periodo.findOne({ where: { activo: true } });
       
       if (!periodoActivo) {
+        console.log('⚠️ No hay periodo activo');
         return res.json([]);
       }
 
-      // ✨ CONSULTA MEJORADA - Solo alumnos del periodo activo
+      console.log('📅 Periodo activo:', periodoActivo.id);
+
+      // ✅ CONSULTA MEJORADA - Solo alumnos del periodo activo
       alumnos = await sequelize.query(`
         SELECT DISTINCT a.*, g.nombre as nombre_grupo, g.semestre as semestre_grupo
         FROM alumnos a
@@ -31,33 +36,49 @@ export const getAlumnos = async (req, res) => {
         replacements: { tutorId: userId, periodoId: periodoActivo.id },
         type: sequelize.QueryTypes.SELECT
       });
+
+      console.log(`✅ Alumnos tutorados encontrados: ${alumnos.length}`);
     } else {
       // Coordinación y jefeDivision ven todos
-      alumnos = await Alumno.findAll({
-        order: [['Primer_Ap', 'ASC'], ['Nombre', 'ASC']]
+      console.log('👥 Obteniendo todos los alumnos (coordinación/jefeDivision)');
+      
+      // ✅ USAR RAW QUERY para evitar problemas con Sequelize
+      const sequelize = (await import('../config/database.js')).default;
+      
+      alumnos = await sequelize.query(`
+        SELECT * FROM alumnos
+        ORDER BY Primer_Ap ASC, Nombre ASC
+      `, {
+        type: sequelize.QueryTypes.SELECT
       });
+
+      console.log(`✅ Total alumnos encontrados: ${alumnos.length}`);
     }
     
     res.json(alumnos);
   } catch (error) {
-    console.error('Error obteniendo alumnos:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error obteniendo alumnos:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({ 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
 export const getAlumno = async (req, res) => {
   try {
     const { id } = req.params;
+    
     if (!id || isNaN(id)) {
       return res.status(400).json({ message: "ID inválido" });
     }
 
     console.log(`🔍 Buscando alumno con ID: ${id}`);
+    
+    // ✅ SIMPLIFICAR - Sin includes problemáticos
     const alumno = await Alumno.findByPk(id, {
-      include: [{
-        model: Materia,
-        through: { attributes: ['semestre', 'calificacion'] }
-      }]
+      raw: true // Devolver objeto plano
     });
 
     if (!alumno) {
@@ -65,8 +86,9 @@ export const getAlumno = async (req, res) => {
       return res.status(404).json({ message: "Alumno no encontrado" });
     }
 
-    console.log(`✅ Alumno encontrado: ${alumno.Nombre} ${alumno.Primer_Ap} (ID: ${alumno.id})`);
-    res.json(alumno.toJSON());
+    console.log(`✅ Alumno encontrado: ${alumno.Nombre} ${alumno.Primer_Ap}`);
+    res.json(alumno);
+    
   } catch (err) {
     console.error("❌ Error en getAlumno:", err);
     res.status(500).json({ message: err.message });
