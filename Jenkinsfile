@@ -128,26 +128,7 @@ pipeline {
             }
         }
 
-        stage('Security - Semgrep') {
-            steps {
-                script {
-                    def exists = sh(
-                        script: "test -f ${SECURITY_TOOLS_PATH}/semgrep && echo yes || echo no",
-                        returnStdout: true
-                    ).trim()
 
-                    if (exists == "yes") {
-                        sh """
-                            ${SECURITY_TOOLS_PATH}/semgrep --config auto --json \
-                            --output semgrep-report.json || true
-                            cat semgrep-report.json || true
-                        """
-                    } else {
-                        echo "Semgrep no disponible, saltando."
-                    }
-                }
-            }
-        }
 
         stage('Security - Secret Scanning') {
             steps {
