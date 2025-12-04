@@ -124,7 +124,7 @@ pipeline {
                     """
                 }
 
-                sh "cat npm-audit-report.txt"
+               
             }
         }
 
@@ -163,7 +163,7 @@ pipeline {
                         sh """
                             ${SECURITY_TOOLS_PATH}/checkov -d . --output json \
                             --output-file checkov-report.json || true
-                            cat checkov-report.json || true
+                       
                         """
                     } else {
                         echo "Checkov no disponible, saltando."
