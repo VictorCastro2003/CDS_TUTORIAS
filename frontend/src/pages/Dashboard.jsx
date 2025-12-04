@@ -71,15 +71,7 @@ const DashboardMejorado = () => {
         console.log("Alumnos después de filtrar por división:", data.length);
       }
 
-      // Filtrar por tutor si es tutor
-      if (decoded.rol === "tutor" && decoded.id) {
-        if (data.length > 0 && data[0].tutor_id !== undefined) {
-          data = data.filter(alumno => alumno.tutor_id === decoded.id);
-          console.log("Alumnos después de filtrar por tutor:", data.length);
-        } else {
-          console.warn("⚠️ El campo 'tutor_id' no existe en la tabla alumnos. Mostrando todos los alumnos.");
-        }
-      }
+    
 
       setAlumnos(Array.isArray(data) ? data : []);
 
