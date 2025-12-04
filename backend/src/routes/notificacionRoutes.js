@@ -1,5 +1,6 @@
 // src/routes/notificacionRoutes.js
 import express from 'express';
+import verifyToken from '../middlewares/verifyToken.js'; // ✅ AGREGAR
 import {
     obtenerNotificaciones,
     marcarComoLeida,
@@ -10,19 +11,11 @@ import {
 
 const router = express.Router();
 
-// Obtener notificaciones de un usuario
-router.get('/usuario/:usuarioId', obtenerNotificaciones);
-
-// Contar notificaciones no leídas
-router.get('/usuario/:usuarioId/count', contarNoLeidas);
-
-// Marcar notificación como leída
-router.put('/:id/leer', marcarComoLeida);
-
-// Marcar todas como leídas
-router.put('/usuario/:usuarioId/leer-todas', marcarTodasComoLeidas);
-
-// Eliminar notificación
-router.delete('/:id', eliminarNotificacion);
+// ✅ TODAS las rutas con verifyToken
+router.get('/usuario/:usuarioId', verifyToken, obtenerNotificaciones);
+router.get('/usuario/:usuarioId/count', verifyToken, contarNoLeidas);
+router.put('/:id/leer', verifyToken, marcarComoLeida);
+router.put('/usuario/:usuarioId/leer-todas', verifyToken, marcarTodasComoLeidas);
+router.delete('/:id', verifyToken, eliminarNotificacion);
 
 export default router;

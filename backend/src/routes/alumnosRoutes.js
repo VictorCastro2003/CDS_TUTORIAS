@@ -54,7 +54,7 @@ router.post("/:id/materias",
       }
 
       // Obtener periodo activo
-      const Periodo = (await import('../models/Periodo.js')).default;
+      const Periodo = (await import('../models/periodo.js')).default;
       const periodoActivo = await Periodo.findOne({ where: { activo: true } });
       
       if (!periodoActivo) {
@@ -114,8 +114,8 @@ router.get("/:id/materias",
       const { semestre, periodo_id } = req.query;
 
       const AlumnoMateria = (await import('../models/alumnoMateria.js')).default;
-      const Materia = (await import('../models/Materia.js')).default;
-      const Periodo = (await import('../models/Periodo.js')).default;
+      const Materia = (await import('../models/materia.js')).default;
+      const Periodo = (await import('../models/periodo.js')).default;
 
       const where = { alumno_id: alumnoId };
       
@@ -176,7 +176,7 @@ router.put("/:id/materias/:alumnoMateriaId/calificacion",
       }
 
       const AlumnoMateria = (await import('../models/alumnoMateria.js')).default;
-      const Periodo = (await import('../models/Periodo.js')).default;
+      const Periodo = (await import('../models/periodo.js')).default;
       
       const periodoActivo = await Periodo.findOne({ where: { activo: true } });
 
@@ -188,7 +188,7 @@ router.put("/:id/materias/:alumnoMateriaId/calificacion",
 
       // Si es tutor, verificar que sea su alumno
       if (req.user.rol === 'tutor') {
-        const Grupo = (await import('../models/Grupo.js')).default;
+        const Grupo = (await import('../models/grupo.js')).default;
         const AlumnoGrupo = (await import('../models/alumnoGrupo.js')).default;
         
         const esAlumnoTutorado = await AlumnoGrupo.findOne({
@@ -273,7 +273,7 @@ router.delete("/:id/materias/:alumnoMateriaId",
   async (req, res) => {
     try {
       const AlumnoMateria = (await import('../models/alumnoMateria.js')).default;
-      const Periodo = (await import('../models/Periodo.js')).default;
+      const Periodo = (await import('../models/periodo.js')).default;
       
       const periodoActivo = await Periodo.findOne({ where: { activo: true } });
 
@@ -309,8 +309,8 @@ router.get("/:id/calificaciones",
       console.log('1. ID del alumno recibido:', alumnoId);
 
       const AlumnoMateria = (await import('../models/alumnoMateria.js')).default;
-      const Materia = (await import('../models/Materia.js')).default;
-      const Periodo = (await import('../models/Periodo.js')).default;
+      const Materia = (await import('../models/materia.js')).default;
+      const Periodo = (await import('../models/periodo.js')).default;
 
       // Obtener TODAS las relaciones alumno-materia
       const relaciones = await AlumnoMateria.findAll({
