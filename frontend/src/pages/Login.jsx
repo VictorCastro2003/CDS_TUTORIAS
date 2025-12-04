@@ -43,7 +43,7 @@ const Login = () => {
 
       <div className="login-container">
         <div className="login-header">
-          <h2>Bienvenidos </h2>
+          <h2>Bienvenido</h2>
           <p>Ingresa tus credenciales para continuar</p>
         </div>
 
