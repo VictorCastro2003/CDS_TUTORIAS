@@ -180,7 +180,7 @@ pipeline {
                     sh """
 ssh -o StrictHostKeyChecking=no ec2-user@${EC2_HOST} << 'EOF'
 
-  cd DevOps_ProyectoFinal
+  cd CDS_TUTORIAS
 
   git fetch origin main
   git reset --hard origin/main
