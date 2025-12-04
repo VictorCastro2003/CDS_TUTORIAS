@@ -76,13 +76,10 @@ const DashboardMejorado = () => {
       setAlumnos(Array.isArray(data) ? data : []);
 
       // Obtener estadísticas reales
-      let queryParams = '';
-      if (decoded.rol === 'jefeDivision' && decoded.division) {
-        queryParams = `?division=${decoded.division}`;
-      } else if (decoded.rol === 'tutor' && decoded.id) {
-        queryParams = `?tutorId=${decoded.id}`;
-      }
-
+    let queryParams = '';
+if (decoded.rol === 'jefeDivision' && decoded.division) {
+  queryParams = `?division=${decoded.division}`;
+}
       const resEstadisticas = await fetch(`http://98.80.218.98:4000/api/estadisticas${queryParams}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -443,7 +440,7 @@ const DashboardMejorado = () => {
               <tbody>
                 {currentAlumnos.length > 0 ? (
                   currentAlumnos.map((alumno) => {
-                      console.log('🔍 Alumno completo:', alumno); // ← AGREGA ESTO
+                     console.log('🔍 Alumno completo:', alumno);
                       console.log('🆔 ID del alumno:', alumno.id);
                     // ✅ Usar alertas y canalizaciones del mapa global
                     const tieneAlerta = alertasMap[alumno.id] && alertasMap[alumno.id].length > 0;

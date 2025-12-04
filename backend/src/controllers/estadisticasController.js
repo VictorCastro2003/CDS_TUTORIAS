@@ -5,7 +5,8 @@ import sequelize from '../config/database.js';
 // Estadísticas GENERALES (todas las carreras y grupos)
 export const obtenerEstadisticas = async (req, res) => {
   try {
-    const { tutorId, division } = req.query;
+    const { division } = req.query;
+    const tutorId = req.user?.id;
     const periodoActivo = await Periodo.findOne({ where: { activo: true } });
 
     let whereClauseAlumnos = {};
