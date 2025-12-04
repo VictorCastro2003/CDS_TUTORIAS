@@ -38,7 +38,7 @@ const AlumnoDetalle = () => {
 
   const fetchAlumno = async () => {
     try {
-      const res = await fetchWithAuth(`http://localhost:4000/api/alumnos/${id}`);
+      const res = await fetchWithAuth(`http://98.80.218.98:4000/api/alumnos/${id}`);
 
       if (!res.ok) {
         if (res.status === 401) {
@@ -72,7 +72,7 @@ const AlumnoDetalle = () => {
 
   const fetchCalificaciones = async () => {
     try {
-      const res = await fetchWithAuth(`http://localhost:4000/api/alumnos/${id}/calificaciones`);
+      const res = await fetchWithAuth(`http://98.80.218.98:4000/api/alumnos/${id}/calificaciones`);
 
       if (res.status === 404) {
         setCalificaciones([]);
@@ -107,7 +107,7 @@ const AlumnoDetalle = () => {
 
   const fetchAlertas = async () => {
     try {
-      const res = await fetchWithAuth(`http://localhost:4000/api/alertas/alumno/${id}`);
+      const res = await fetchWithAuth(`http://98.80.218.98:4000/api/alertas/alumno/${id}`);
       if (res.ok) {
         const data = await res.json();
         setAlertasActivas(data.filter(a => a.estado === 'activa'));

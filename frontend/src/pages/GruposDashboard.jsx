@@ -46,7 +46,7 @@ const GruposDashboard = () => {
   const [filtroCanalizaciones, setFiltroCanalizaciones] = useState('todas');
 
   const token = localStorage.getItem('token');
-  const API_BASE = 'http://localhost:4000/api';
+  const API_BASE = 'http://98.80.218.98:4000/api';
 
   const carreras = [
     "Ingeniería en Sistemas Computacionales",

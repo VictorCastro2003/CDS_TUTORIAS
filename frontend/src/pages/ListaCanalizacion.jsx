@@ -41,7 +41,7 @@ export default function VistaCanalizaciones({ alumno_id }) {
       setLoading(true);
       const token = localStorage.getItem('token');
 
-      let url = 'http://localhost:4000/api/canalizaciones';
+      let url = 'http://98.80.218.98:4000/api/canalizaciones';
 
       // Filtrar según el contexto
       if (alumno_id) {
@@ -87,7 +87,7 @@ export default function VistaCanalizaciones({ alumno_id }) {
       for (const can of canalizacionesList) {
         try {
           const response = await axios.get(
-            `http://localhost:4000/api/contrarreferencias/canalizacion/${can.id}`,
+            `http://98.80.218.98:4000/api/contrarreferencias/canalizacion/${can.id}`,
             {
               headers: { 'Authorization': `Bearer ${token}` }
             }
@@ -127,7 +127,7 @@ export default function VistaCanalizaciones({ alumno_id }) {
       const token = localStorage.getItem('token');
 
       const response = await axios.get(
-        `http://localhost:4000/api/canalizaciones/${canalizacionId}/report/word`,
+        `http://98.80.218.98:4000/api/canalizaciones/${canalizacionId}/report/word`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -221,7 +221,7 @@ export default function VistaCanalizaciones({ alumno_id }) {
         const token = localStorage.getItem('token');
 
         await axios.post(
-          'http://localhost:4000/api/contrarreferencias',
+          'http://98.80.218.98:4000/api/contrarreferencias',
           {
             canalizacion_id: canalizacion.id,
             generada_por: userId,
@@ -342,7 +342,7 @@ export default function VistaCanalizaciones({ alumno_id }) {
         try {
           const token = localStorage.getItem('token');
           await axios.delete(
-            `http://localhost:4000/api/canalizaciones/${canalizacionId}`,
+            `http://98.80.218.98:4000/api/canalizaciones/${canalizacionId}`,
             {
               headers: {
                 'Authorization': `Bearer ${token}`

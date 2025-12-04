@@ -53,7 +53,7 @@ const DashboardMejorado = () => {
       setUserId(decoded.id || "");
 
       // Obtener alumnos
-      const resAlumnos = await fetch("http://localhost:4000/api/alumnos", {
+      const resAlumnos = await fetch("http://98.80.218.98:4000/api/alumnos", {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -91,7 +91,7 @@ const DashboardMejorado = () => {
         queryParams = `?tutorId=${decoded.id}`;
       }
 
-      const resEstadisticas = await fetch(`http://localhost:4000/api/estadisticas${queryParams}`, {
+      const resEstadisticas = await fetch(`http://98.80.218.98:4000/api/estadisticas${queryParams}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -109,7 +109,7 @@ const DashboardMejorado = () => {
       // ✅ OBTENER TODAS LAS ALERTAS Y CANALIZACIONES DE UNA SOLA VEZ
       try {
         // Obtener todas las alertas activas
-        const resAlertasGlobal = await fetch(`http://localhost:4000/api/alertas?estado=activa`, {
+        const resAlertasGlobal = await fetch(`http://98.80.218.98:4000/api/alertas?estado=activa`, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -132,7 +132,7 @@ const DashboardMejorado = () => {
         }
 
         // Obtener todas las canalizaciones activas
-        const resCanalizacionesGlobal = await fetch(`http://localhost:4000/api/canalizaciones`, {
+        const resCanalizacionesGlobal = await fetch(`http://98.80.218.98:4000/api/canalizaciones`, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",

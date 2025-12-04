@@ -34,7 +34,7 @@ export default function CanalizacionForm({ alumno_id, nombreAlumno }) {
       setLoadingTutores(true);
       const token = localStorage.getItem('token');
       
-      const response = await axios.get('http://localhost:4000/api/users/tutores', {
+      const response = await axios.get('http://98.80.218.98:4000/api/users/tutores', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -102,7 +102,7 @@ export default function CanalizacionForm({ alumno_id, nombreAlumno }) {
       setSubmitting(true);
       const token = localStorage.getItem('token');
 
-      await axios.post('http://localhost:4000/api/canalizaciones', form, {
+      await axios.post('http://98.80.218.98:4000/api/canalizaciones', form, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

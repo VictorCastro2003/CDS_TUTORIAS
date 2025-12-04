@@ -33,7 +33,7 @@ export default function CanalizacionesWorkflow() {
       setUserDivision(decoded.division || '');
 
       // Cargar canalizaciones según el rol
-      let url = 'http://localhost:4000/api/canalizaciones';
+      let url = 'http://98.80.218.98:4000/api/canalizaciones';
 
       if (decoded.rol === 'tutor') {
         url += `?tutorId=${decoded.id}`;
@@ -49,7 +49,7 @@ export default function CanalizacionesWorkflow() {
       setCanalizaciones(response.data);
 
       // Cargar usuarios para asignaciones
-      const usersResponse = await axios.get('http://localhost:4000/api/users', {
+      const usersResponse = await axios.get('http://98.80.218.98:4000/api/users', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -101,27 +101,27 @@ export default function CanalizacionesWorkflow() {
 
       switch (modalType) {
         case 'enviar_jefe':
-          url = `http://localhost:4000/api/workflow/${selectedCanalizacion.id}/enviar-jefe-division`;
+          url = `http://98.80.218.98:4000/api/workflow/${selectedCanalizacion.id}/enviar-jefe-division`;
           data = { jefe_division_id: formData.jefe_division_id };
           break;
         case 'asignar_docente':
-          url = `http://localhost:4000/api/workflow/${selectedCanalizacion.id}/asignar-docente`;
+          url = `http://98.80.218.98:4000/api/workflow/${selectedCanalizacion.id}/asignar-docente`;
           data = { docente_asesor_id: formData.docente_asesor_id };
           break;
         case 'enviar_coordinacion':
-          url = `http://localhost:4000/api/workflow/${selectedCanalizacion.id}/enviar-coordinacion`;
+          url = `http://98.80.218.98:4000/api/workflow/${selectedCanalizacion.id}/enviar-coordinacion`;
           data = { coordinacion_id: formData.coordinacion_id };
           break;
         case 'iniciar_atencion':
-          url = `http://localhost:4000/api/workflow/${selectedCanalizacion.id}/iniciar-atencion`;
+          url = `http://98.80.218.98:4000/api/workflow/${selectedCanalizacion.id}/iniciar-atencion`;
           data = { psicologo_id: userId };
           break;
         case 'contrarreferencia_academica':
-          url = `http://localhost:4000/api/workflow/${selectedCanalizacion.id}/contrarreferencia-academica`;
+          url = `http://98.80.218.98:4000/api/workflow/${selectedCanalizacion.id}/contrarreferencia-academica`;
           data = { contrarreferencia: formData.contrarreferencia, generada_por: userId };
           break;
         case 'contrarreferencia_psicologica':
-          url = `http://localhost:4000/api/workflow/${selectedCanalizacion.id}/contrarreferencia-psicologica`;
+          url = `http://98.80.218.98:4000/api/workflow/${selectedCanalizacion.id}/contrarreferencia-psicologica`;
           data = {
             contrarreferencia: formData.contrarreferencia,
             generada_por: userId,
