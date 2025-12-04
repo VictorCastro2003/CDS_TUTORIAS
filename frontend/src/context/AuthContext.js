@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     // ensure axios uses backend API base
-    axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
+    axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://98.80.218.98:4000/api';
 
     if (token && userData) {
       setUser(JSON.parse(userData));

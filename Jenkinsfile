@@ -140,7 +140,7 @@ pipeline {
 
                     if (exists == "yes") {
                         sh """
-                            ${SECURITY_TOOLS_PATH}/detect-secrets scan --all-files \
+                            ${SECURITY_TOOLS_PATH}/detect-secrets scan  \
                             > detect-secrets-report.json || true
                             cat detect-secrets-report.json || true
                         """
