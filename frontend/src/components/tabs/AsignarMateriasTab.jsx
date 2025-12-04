@@ -16,7 +16,7 @@ const AsignarMateriasTab = ({ alumnoId, alumno, onMateriasActualizadas }) => {
     try {
       setLoadingMaterias(true);
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:4000/api/materias?carrera=${alumno.Carrera}`, {
+      const res = await fetch(`http://98.80.218.98:4000/api/materias?carrera=${alumno.Carrera}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -66,7 +66,7 @@ const AsignarMateriasTab = ({ alumnoId, alumno, onMateriasActualizadas }) => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:4000/api/alumnos/${alumnoId}/materias`, {
+      const res = await fetch(`http://98.80.218.98:4000/api/alumnos/${alumnoId}/materias`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

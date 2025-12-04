@@ -26,7 +26,7 @@ const CustomNavbar = () => {
       if (!token || !auth?.user?.id) return;
 
       const response = await axios.get(
-        `http://localhost:4000/api/notificaciones/usuario/${auth.user.id}?leida=false`,
+        `http://98.80.218.98:4000/api/notificaciones/usuario/${auth.user.id}?leida=false`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -43,7 +43,7 @@ const CustomNavbar = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.put(
-        `http://localhost:4000/api/notificaciones/${notifId}/leer`,
+        `http://98.80.218.98:4000/api/notificaciones/${notifId}/leer`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` }

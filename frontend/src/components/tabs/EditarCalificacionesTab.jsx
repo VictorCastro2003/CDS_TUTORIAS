@@ -47,7 +47,7 @@ const EditarCalificacionesTab = ({ calificaciones, alumnoId, onCalificacionesAct
       const token = localStorage.getItem('token');
 
       const promises = Object.entries(cambiosPendientes).map(([alumnoMateriaId, calificacion]) => {
-        const url = `http://localhost:4000/api/alumnos/${alumnoId}/materias/${alumnoMateriaId}/calificacion`;
+        const url = `http://98.80.218.98:4000/api/alumnos/${alumnoId}/materias/${alumnoMateriaId}/calificacion`;
         console.log('📤 Enviando a:', url, { calificacion });
         
         return fetch(url, {
