@@ -76,7 +76,7 @@ const AlumnoDetalle = () => {
 const fetchCalificaciones = async () => {
   try {
     // ✅ CAMBIO IMPORTANTE: La ruta correcta es /api/calificaciones/:id
-    const res = await fetchWithAuth(`http://98.80.218.98:4000/api/calificaciones/${id}`);
+    const res = await fetchWithAuth(`http://98.80.218.98:4000/api/alumnos/${id}/calificaciones`);
 
     if (res.status === 404) {
       setCalificaciones([]);
