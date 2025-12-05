@@ -5,9 +5,7 @@ import sequelize from '../config/database.js';
 // Estadísticas GENERALES (todas las carreras y grupos)
 export const obtenerEstadisticas = async (req, res) => {
   try {
-  const { division } = req.query;
-const tutorId = req.user?.id; // ✅ Obtener del middleware de autenticación
-const userRole = req.user?.rol;
+    const { tutorId, division } = req.query;
     const periodoActivo = await Periodo.findOne({ where: { activo: true } });
 
     let whereClauseAlumnos = {};
@@ -36,7 +34,7 @@ const userRole = req.user?.rol;
         whereClauseCanalizaciones.alumno_id = { [Op.in]: [-1] }; // ID imposible
         whereClauseAlertas.alumno_id = { [Op.in]: [-1] };
       }
-    } else if (userRole === 'tutor' && tutorId) {
+    } else if (tutorId) {
       // Tutor - obtener alumnos de sus grupos
       const gruposTutor = await Grupo.findAll({
         where: {

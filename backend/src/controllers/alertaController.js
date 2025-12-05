@@ -1,6 +1,7 @@
 import { Alerta, Alumno, User, Grupo, AlumnoGrupo, Periodo } from '../models/index.js';
 import { Op } from 'sequelize';
 
+// Obtener todas las alertas (con filtros opcionales)
 export const obtenerTodasAlertas = async (req, res) => {
   try {
     const { estado, tipo, grupoId } = req.query;
@@ -12,21 +13,15 @@ export const obtenerTodasAlertas = async (req, res) => {
     if (estado) where.estado = estado;
     if (tipo) where.tipo_alerta = tipo;
     
-    // ✅ VALIDACIÓN CRÍTICA - Obtener periodo activo primero
-    const periodoActivo = await Periodo.findOne({ where: { activo: true } });
-
-    if (!periodoActivo) {
-      console.warn('⚠️ No hay periodo activo - retornando array vacío');
-      return res.json([]); // ✅ CRÍTICO: Retornar array vacío, NO error
-    }
-
     // Si es tutor, solo ver alertas de sus alumnos
     let alumnoIds = [];
     if (rol === 'tutor') {
+      const periodoActivo = await Periodo.findOne({ where: { activo: true } });
+      
       const gruposTutor = await Grupo.findAll({
         where: { 
           tutor_id: userId,
-          periodo_id: periodoActivo.id
+          periodo_id: periodoActivo?.id
         },
         attributes: ['id']
       });
@@ -37,7 +32,7 @@ export const obtenerTodasAlertas = async (req, res) => {
         const asignaciones = await AlumnoGrupo.findAll({
           where: { 
             grupo_id: { [Op.in]: gruposIds },
-            periodo_id: periodoActivo.id
+            periodo_id: periodoActivo?.id
           },
           attributes: ['alumno_id']
         });
@@ -46,18 +41,20 @@ export const obtenerTodasAlertas = async (req, res) => {
       }
       
       if (alumnoIds.length === 0) {
-        return res.json([]); // ✅ Sin alumnos, retornar vacío
+        return res.json([]);
       }
       
       where.alumno_id = { [Op.in]: alumnoIds };
     }
     
-    // Filtro por grupo específico
+    // Filtro por grupo específico (para coordinación o vista filtrada)
     if (grupoId) {
+      const periodoActivo = await Periodo.findOne({ where: { activo: true } });
+      
       const asignaciones = await AlumnoGrupo.findAll({
         where: { 
           grupo_id: grupoId,
-          periodo_id: periodoActivo.id
+          periodo_id: periodoActivo?.id
         },
         attributes: ['alumno_id']
       });
@@ -65,6 +62,7 @@ export const obtenerTodasAlertas = async (req, res) => {
       const grupoAlumnoIds = asignaciones.map(a => a.alumno_id);
       
       if (where.alumno_id) {
+        // Si ya hay filtro de tutor, hacer intersección
         where.alumno_id = { 
           [Op.in]: alumnoIds.filter(id => grupoAlumnoIds.includes(id))
         };
@@ -88,14 +86,14 @@ export const obtenerTodasAlertas = async (req, res) => {
         }
       ],
       order: [
-        ['estado', 'ASC'],
+        ['estado', 'ASC'], // Activas primero
         ['fecha_alerta', 'DESC']
       ]
     });
     
     res.json(alertas);
   } catch (error) {
-    console.error('❌ Error obteniendo alertas:', error);
+    console.error('Error obteniendo alertas:', error);
     res.status(500).json({ 
       message: 'Error al obtener alertas', 
       error: error.message 
