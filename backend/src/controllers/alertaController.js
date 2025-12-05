@@ -12,7 +12,13 @@ export const obtenerTodasAlertas = async (req, res) => {
     // Filtros opcionales
     if (estado) where.estado = estado;
     if (tipo) where.tipo_alerta = tipo;
-    
+    const periodoActivo = await Periodo.findOne({ where: { activo: true } });
+
+// AGREGAR ESTA VALIDACIÓN:
+if (!periodoActivo) {
+  console.warn('⚠️ No hay periodo activo');
+  return res.json([]); // Retornar array vacío en lugar de error
+}
     // Si es tutor, solo ver alertas de sus alumnos
     let alumnoIds = [];
     if (rol === 'tutor') {
