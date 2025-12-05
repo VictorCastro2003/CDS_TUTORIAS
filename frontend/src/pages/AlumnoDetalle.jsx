@@ -70,44 +70,41 @@ const AlumnoDetalle = () => {
     }
   };
 
- // ✅ SOLO LA FUNCIÓN fetchCalificaciones CORREGIDA
-// Reemplaza tu función fetchCalificaciones actual con esta:
+  const fetchCalificaciones = async () => {
+    try {
+      const res = await fetchWithAuth(`http://98.80.218.98:4000/api/alumnos/${id}/calificaciones`);
 
-const fetchCalificaciones = async () => {
-  try {
-    // ✅ CAMBIO IMPORTANTE: La ruta correcta es /api/calificaciones/:id
-    const res = await fetchWithAuth(`http://98.80.218.98:4000/api/alumnos/${id}/calificaciones`);
-
-    if (res.status === 404) {
-      setCalificaciones([]);
-      return;
-    }
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        console.warn("No autorizado para ver calificaciones");
+      if (res.status === 404) {
+        setCalificaciones([]);
         return;
       }
-      throw new Error("Error al cargar calificaciones");
-    }
 
-    const data = await res.json();
-    console.log('📥 DATOS RECIBIDOS DEL BACKEND:');
-    console.log('Total de registros:', data.length);
-    if (data.length > 0) {
-      console.log('Primera calificación:', data[0]);
-      console.log('IDs en primera calificación:', {
-        id: data[0].id,
-        materia_id: data[0].materia_id
-      });
-    }
+      if (!res.ok) {
+        if (res.status === 401) {
+          console.warn("No autorizado para ver calificaciones");
+          return;
+        }
+        throw new Error("Error al cargar calificaciones");
+      }
 
-    setCalificaciones(Array.isArray(data) ? data : []);
-  } catch (error) {
-    console.error("Error cargando calificaciones:", error);
-    setCalificaciones([]);
-  }
-};
+      const data = await res.json();
+      console.log('📥 DATOS RECIBIDOS DEL BACKEND:');
+      console.log('Total de registros:', data.length);
+      if (data.length > 0) {
+        console.log('Primera calificación:', data[0]);
+        console.log('IDs en primera calificación:', {
+          id: data[0].id,
+          materia_id: data[0].materia_id
+        });
+      }
+
+      setCalificaciones(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error cargando calificaciones:", error);
+      setCalificaciones([]);
+    }
+  };
+
   const fetchAlertas = async () => {
     try {
       const res = await fetchWithAuth(`http://98.80.218.98:4000/api/alertas/alumno/${id}`);

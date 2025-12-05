@@ -1,5 +1,5 @@
 // src/App.test.js
-import React from 'react';
+import React from 'react';import { render, screen } from '@testing-library/react';
 import { render } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 
@@ -14,12 +14,12 @@ const App = require('./App').default;
 
 describe('App Component', () => {
   test('renderiza sin errores', () => {
-    const { getByTestId } = render(
+    render(
       <BrowserRouter>
         <App />
       </BrowserRouter>
     );
     
-    expect(getByTestId('app')).toBeInTheDocument();
+    expect(screen.getByTestId('app')).toBeInTheDocument();
   });
 });

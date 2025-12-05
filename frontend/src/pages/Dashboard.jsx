@@ -28,43 +28,41 @@ const DashboardMejorado = () => {
   const [alertasMap, setAlertasMap] = useState({});
   const [canalizacionesMap, setCanalizacionesMap] = useState({});
 
-const fetchData = async () => {
-  try {
-    setLoading(true);
-    const token = localStorage.getItem("token");
-    if (!token) {
-      Swal.fire("Error", "No se encontró token de autenticación", "error");
-      navigate('/login');
-      return;
-    }
-
-    const decoded = jwtDecode(token);
-    console.log("Usuario decodificado:", decoded);
-
-    // Bloquear coordinación
-    if (decoded.rol === 'coordinacion') {
-      navigate('/grupos-dashboard');
-      return;
-    }
-
-    setUserRole(decoded.rol || "");
-    setUserDivision(decoded.division || "");
-    setUserId(decoded.id || "");
-
-    // ✅ Obtener alumnos con manejo de errores
+  const fetchData = async () => {
     try {
-      const resAlumnos = await fetch("http://98.80.218.98:4000/api/alumnos", {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      if (!token) {
+        Swal.fire("Error", "No se encontró token de autenticación", "error");
+        setLoading(false);
+        return;
+      }
+
+      const decoded = jwtDecode(token);
+
+      console.log("Usuario decodificado:", decoded);
+
+      // Bloquear coordinación
+      if (decoded.rol === 'coordinacion') {
+        navigate('/grupos-dashboard');
+        return;
+      }
+
+      setUserRole(decoded.rol || "");
+      setUserDivision(decoded.division || "");
+      setUserId(decoded.id || "");
+
+      // Obtener alumnos
+      const resAlumnos = await fetch("http://98.80.218.98:4000:4000/api/alumnos", {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
 
-      if (!resAlumnos.ok) {
-        throw new Error(`Error al obtener alumnos: ${resAlumnos.status}`);
-      }
-      
+      if (!resAlumnos.ok) throw new Error(`Error ${resAlumnos.status}`);
       let data = await resAlumnos.json();
+
       console.log("Alumnos recibidos del backend:", data.length);
 
       // Filtrar por división si es jefe de división
@@ -73,21 +71,27 @@ const fetchData = async () => {
         console.log("Alumnos después de filtrar por división:", data.length);
       }
 
-      setAlumnos(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error al obtener alumnos:", error);
-      setAlumnos([]);
-      Swal.fire("Advertencia", "No se pudieron cargar los alumnos", "warning");
-    }
+      // Filtrar por tutor si es tutor
+      if (decoded.rol === "tutor" && decoded.id) {
+        if (data.length > 0 && data[0].tutor_id !== undefined) {
+          data = data.filter(alumno => alumno.tutor_id === decoded.id);
+          console.log("Alumnos después de filtrar por tutor:", data.length);
+        } else {
+          console.warn("⚠️ El campo 'tutor_id' no existe en la tabla alumnos. Mostrando todos los alumnos.");
+        }
+      }
 
-    // ✅ Obtener estadísticas con manejo de errores
-    try {
+      setAlumnos(Array.isArray(data) ? data : []);
+
+      // Obtener estadísticas reales
       let queryParams = '';
       if (decoded.rol === 'jefeDivision' && decoded.division) {
-        queryParams = `?division=${encodeURIComponent(decoded.division)}`;
+        queryParams = `?division=${decoded.division}`;
+      } else if (decoded.rol === 'tutor' && decoded.id) {
+        queryParams = `?tutorId=${decoded.id}`;
       }
-      
-      const resEstadisticas = await fetch(`http://98.80.218.98:4000/api/estadisticas${queryParams}`, {
+
+      const resEstadisticas = await fetch(`http://98.80.218.98:4000:4000/api/estadisticas${queryParams}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -100,91 +104,69 @@ const fetchData = async () => {
         console.log("Estadísticas recibidas:", stats);
       } else {
         console.error("Error al obtener estadísticas:", resEstadisticas.status);
-        // Mantener estadísticas por defecto
-        setEstadisticas({
-          totalAlumnos: alumnos.length,
-          canalizacionesActivas: 0,
-          alumnosEnRiesgo: 0,
-          faltasRecientes: 0
-        });
       }
-    } catch (error) {
-      console.error("Error al obtener estadísticas:", error);
-      // Mantener estadísticas por defecto
-    }
 
-    // ✅ Obtener alertas con manejo de errores
-    try {
-      const resAlertasGlobal = await fetch(`http://98.80.218.98:4000/api/alertas?estado=activa`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (resAlertasGlobal.ok) {
-        const todasLasAlertas = await resAlertasGlobal.json();
-        const alertasTemp = {};
-
-        todasLasAlertas.forEach(alerta => {
-          if (!alertasTemp[alerta.alumno_id]) {
-            alertasTemp[alerta.alumno_id] = [];
-          }
-          alertasTemp[alerta.alumno_id].push(alerta);
+      // ✅ OBTENER TODAS LAS ALERTAS Y CANALIZACIONES DE UNA SOLA VEZ
+      try {
+        // Obtener todas las alertas activas
+        const resAlertasGlobal = await fetch(`http://98.80.218.98:4000:4000/api/alertas?estado=activa`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         });
 
-        setAlertasMap(alertasTemp);
-        console.log("Alertas cargadas:", Object.keys(alertasTemp).length, "alumnos con alertas");
-      } else {
-        console.warn("No se pudieron cargar alertas:", resAlertasGlobal.status);
-        setAlertasMap({});
-      }
-    } catch (error) {
-      console.error("Error al obtener alertas:", error);
-      setAlertasMap({});
-    }
+        if (resAlertasGlobal.ok) {
+          const todasLasAlertas = await resAlertasGlobal.json();
+          const alertasTemp = {};
 
-    // ✅ Obtener canalizaciones con manejo de errores
-    try {
-      const resCanalizacionesGlobal = await fetch(`http://98.80.218.98:4000/api/canalizaciones`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (resCanalizacionesGlobal.ok) {
-        const todasLasCanalizaciones = await resCanalizacionesGlobal.json();
-        const canalizacionesTemp = {};
-
-        todasLasCanalizaciones.forEach(canalizacion => {
-          if (canalizacion.estado === 'pendiente' || canalizacion.estado === 'en seguimiento') {
-            if (!canalizacionesTemp[canalizacion.alumno_id]) {
-              canalizacionesTemp[canalizacion.alumno_id] = [];
+          todasLasAlertas.forEach(alerta => {
+            if (!alertasTemp[alerta.alumno_id]) {
+              alertasTemp[alerta.alumno_id] = [];
             }
-            canalizacionesTemp[canalizacion.alumno_id].push(canalizacion);
-          }
+            alertasTemp[alerta.alumno_id].push(alerta);
+          });
+
+          setAlertasMap(alertasTemp);
+          console.log("Alertas cargadas:", Object.keys(alertasTemp).length, "alumnos con alertas");
+        }
+
+        // Obtener todas las canalizaciones activas
+        const resCanalizacionesGlobal = await fetch(`http://98.80.218.98:4000:4000/api/canalizaciones`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         });
 
-        setCanalizacionesMap(canalizacionesTemp);
-        console.log("Canalizaciones cargadas:", Object.keys(canalizacionesTemp).length, "alumnos con canalizaciones");
-      } else {
-        console.warn("No se pudieron cargar canalizaciones:", resCanalizacionesGlobal.status);
-        setCanalizacionesMap({});
-      }
-    } catch (error) {
-      console.error("Error al obtener canalizaciones:", error);
-      setCanalizacionesMap({});
-    }
+        if (resCanalizacionesGlobal.ok) {
+          const todasLasCanalizaciones = await resCanalizacionesGlobal.json();
+          const canalizacionesTemp = {};
 
-  } catch (error) {
-    console.error("Error general al obtener datos:", error);
-    Swal.fire("Error", "Error al cargar el dashboard", "error");
-    setAlumnos([]);
-  } finally {
-    setLoading(false);
-  }
-};
+          todasLasCanalizaciones.forEach(canalizacion => {
+            if (canalizacion.estado === 'pendiente' || canalizacion.estado === 'en seguimiento') {
+              if (!canalizacionesTemp[canalizacion.alumno_id]) {
+                canalizacionesTemp[canalizacion.alumno_id] = [];
+              }
+              canalizacionesTemp[canalizacion.alumno_id].push(canalizacion);
+            }
+          });
+
+          setCanalizacionesMap(canalizacionesTemp);
+          console.log("Canalizaciones cargadas:", Object.keys(canalizacionesTemp).length, "alumnos con canalizaciones");
+        }
+      } catch (error) {
+        console.error("Error al obtener alertas/canalizaciones:", error);
+      }
+
+    } catch (error) {
+      console.error("Error al obtener datos:", error);
+      Swal.fire("Error", "No se pudieron cargar los datos", "error");
+      setAlumnos([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filtrado (solo búsqueda general)
   const filteredAlumnos = alumnos.filter((alumno) => {
@@ -469,8 +451,6 @@ const fetchData = async () => {
               <tbody>
                 {currentAlumnos.length > 0 ? (
                   currentAlumnos.map((alumno) => {
-                     console.log('🔍 Alumno completo:', alumno);
-                      console.log('🆔 ID del alumno:', alumno.id);
                     // ✅ Usar alertas y canalizaciones del mapa global
                     const tieneAlerta = alertasMap[alumno.id] && alertasMap[alumno.id].length > 0;
                     const tieneCanalizacion = canalizacionesMap[alumno.id] && canalizacionesMap[alumno.id].length > 0;
