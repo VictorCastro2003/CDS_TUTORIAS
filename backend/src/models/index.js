@@ -1,6 +1,6 @@
 // models/index.js
 import sequelize from "../config/database.js";
-import Alumno from "./alerta.js";
+import Alumno from "./alumno.js";
 import Materia from "./materia.js";
 import AlumnoMateria from "./alumnoMateria.js";
 import User from "./user.js";
