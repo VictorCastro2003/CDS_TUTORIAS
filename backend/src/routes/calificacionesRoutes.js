@@ -5,8 +5,7 @@ import verificarRoles from '../middlewares/autorizarRoles.js';
 
 const router = express.Router();
 
-// ✅ IMPORTANTE: Esta ruta se monta en /api/calificaciones
-// Por lo tanto, esta ruta responderá a: /api/calificaciones/:id
-router.get('/:id', verifyToken, verificarRoles("tutor", "coordinacion", "jefeDivision"), getCalificacionesByAlumno);
+// Obtener calificaciones de un alumno
+router.get('/:id', verifyToken, verificarRoles("tutor", "coordinacion"), getCalificacionesByAlumno);
 
 export default router;
