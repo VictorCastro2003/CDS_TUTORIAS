@@ -32,7 +32,6 @@ export const crearCanalizacion = async (req, res) => {
 
 export const obtenerCanalizaciones = async (req, res) => {
   try {
-    // ⚠️ FALTA: Agregar grupoId y carrera a la desestructuración
     const { alumnoId, tutorId, division, grupoId, carrera } = req.query;
 
     let whereClause = {};
@@ -47,39 +46,50 @@ export const obtenerCanalizaciones = async (req, res) => {
       whereClause.alumno_id = alumnoId;
     }
 
-    // Filtrar por tutor (para rol tutor)
+    // Filtrar por tutor
     if (tutorId) {
       whereClause.tutor_id = tutorId;
     }
 
-    // Filtrar por división (para jefe de división)
+    // Filtrar por división
     if (division) {
       includeAlumno.where = { Carrera: division };
     }
 
-    // ⚠️ FALTA: Agregar filtro por GRUPO
+    // ✅ Filtro por grupo
     if (grupoId) {
-      // Primero, necesitas importar el modelo AlumnoGrupo al inicio del archivo
-      const { AlumnoGrupo } = await import('../models/index.js');
+      try {
+        const Periodo = (await import('../models/periodo.js')).default;
+        const periodoActivo = await Periodo.findOne({ where: { activo: true } });
+        
+        if (!periodoActivo) {
+          console.warn('⚠️ No hay periodo activo');
+          return res.json([]);
+        }
 
-      // Obtener IDs de alumnos del grupo
-      const alumnosGrupo = await AlumnoGrupo.findAll({
-        where: { grupo_id: grupoId },
-        attributes: ['alumno_id']
-      });
+        const alumnosGrupo = await AlumnoGrupo.findAll({
+          where: { 
+            grupo_id: grupoId,
+            periodo_id: periodoActivo.id
+          },
+          attributes: ['alumno_id']
+        });
 
-      const alumnoIds = alumnosGrupo.map(ag => ag.alumno_id);
+        const alumnoIds = alumnosGrupo.map(ag => ag.alumno_id);
 
-      if (alumnoIds.length > 0) {
-        whereClause.alumno_id = alumnoIds;
-      } else {
-        // Si no hay alumnos en el grupo, devolver array vacío
+        if (alumnoIds.length > 0) {
+          whereClause.alumno_id = alumnoIds;
+        } else {
+          return res.json([]);
+        }
+      } catch (error) {
+        console.error('Error filtrando por grupo:', error);
         return res.json([]);
       }
     }
 
-    // ⚠️ FALTA: Agregar filtro por CARRERA
-    if (carrera && !division) { // Evitar conflicto si ya hay filtro por división
+    // Filtro por carrera
+    if (carrera && !division) {
       includeAlumno.where = { Carrera: carrera };
     }
 
@@ -98,7 +108,7 @@ export const obtenerCanalizaciones = async (req, res) => {
 
     res.json(canalizaciones);
   } catch (error) {
-    console.error('Error al obtener canalizaciones:', error);
+    console.error('❌ Error al obtener canalizaciones:', error);
     res.status(500).json({
       message: "Error al obtener canalizaciones",
       error: error.message
