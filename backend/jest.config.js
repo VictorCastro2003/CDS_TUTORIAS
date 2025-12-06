@@ -11,10 +11,5 @@ export default {
   ],
   coverageDirectory: 'coverage',
   verbose: true,
-  testTimeout: 10000,
-  // Para ES Modules
-  extensionsToTreatAsEsm: ['.js'],
-  moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1'
-  }
+  testTimeout: 10000
 };
