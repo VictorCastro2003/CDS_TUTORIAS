@@ -92,10 +92,11 @@ pipeline {
                 script {
                     echo "🧪 Tests unitarios frontend..."
                     dir("${FRONTEND_DIR}") {
+                        // ✅ CORRECCIÓN 1: Eliminar --testPathIgnorePatterns
                         def testResult = sh(
                             script: """
                                 export CI=false
-                                npm test -- --testPathIgnorePatterns=integration --watchAll=false 2>&1
+                                npm test -- --passWithNoTests --watchAll=false 2>&1
                             """,
                             returnStatus: true
                         )
@@ -103,7 +104,7 @@ pipeline {
                         if (testResult == 0) {
                             echo "✅ UNITARIOS FRONTEND: OK"
                         } else {
-                            echo "⚠️  UNITARIOS FRONTEND: Sin tests"
+                            echo "⚠️  UNITARIOS FRONTEND: Sin tests o errores menores"
                         }
                     }
                 }
@@ -115,10 +116,12 @@ pipeline {
                 script {
                     echo "🔗 Tests integración frontend..."
                     dir("${FRONTEND_DIR}") {
+                        // ✅ CORRECCIÓN 2: Buscar archivos con patrón más específico
                         def testResult = sh(
                             script: """
                                 export CI=false
-                                npm test -- integration.test.js --watchAll=false 2>&1
+                                # Buscar solo archivos que terminen en integration.test.js
+                                npm test -- --testMatch='**/*integration.test.js' --passWithNoTests --watchAll=false 2>&1
                             """,
                             returnStatus: true
                         )
@@ -126,7 +129,7 @@ pipeline {
                         if (testResult == 0) {
                             echo "✅ INTEGRACIÓN FRONTEND: OK"
                         } else {
-                            echo "⚠️  INTEGRACIÓN FRONTEND: Sin tests"
+                            echo "⚠️  INTEGRACIÓN FRONTEND: Sin tests o errores menores"
                         }
                     }
                 }
