@@ -1,0 +1,6 @@
+# En la raíz del proyecto
+backend/.env
+*.env
+*-report.json
+*-report.txt
+node_modules/
