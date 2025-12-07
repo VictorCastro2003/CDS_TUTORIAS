@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import "bootstrap/dist/css/bootstrap.min.css";
 import CanalizacionForm from "./FormularioCanalizaciones";
 import { jwtDecode } from 'jwt-decode';
+import fetchWithAuth from '../utils/fetchWithAuth'; 
 
 // Importar los componentes de tabs
 import AsignarMateriasTab from '../components/tabs/AsignarMateriasTab';
@@ -21,24 +22,11 @@ const AlumnoDetalle = () => {
   const [alertasActivas, setAlertasActivas] = useState([]);
   const [userRole, setUserRole] = useState('');
 
-  const fetchWithAuth = async (url) => {
-    const token = localStorage.getItem('token');
-
-    const headers = {
-      'Content-Type': 'application/json'
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    const res = await fetch(url, { headers });
-    return res;
-  };
+  // ✅ ELIMINADA la función fetchWithAuth local - ahora usa la importada
 
   const fetchAlumno = async () => {
     try {
-      const res = await fetchWithAuth(`http://98.80.218.98:4000/api/alumnos/${id}`);
+      const res = await fetchWithAuth(`/alumnos/${id}`); // ← URL relativa
 
       if (!res.ok) {
         if (res.status === 401) {
@@ -72,7 +60,7 @@ const AlumnoDetalle = () => {
 
   const fetchCalificaciones = async () => {
     try {
-      const res = await fetchWithAuth(`http://98.80.218.98:4000/api/alumnos/${id}/calificaciones`);
+      const res = await fetchWithAuth(`/alumnos/${id}/calificaciones`); // ← URL relativa
 
       if (res.status === 404) {
         setCalificaciones([]);
@@ -107,7 +95,7 @@ const AlumnoDetalle = () => {
 
   const fetchAlertas = async () => {
     try {
-      const res = await fetchWithAuth(`http://98.80.218.98:4000/api/alertas/alumno/${id}`);
+      const res = await fetchWithAuth(`/alertas/alumno/${id}`); // ← URL relativa
       if (res.ok) {
         const data = await res.json();
         setAlertasActivas(data.filter(a => a.estado === 'activa'));
@@ -168,29 +156,25 @@ const AlumnoDetalle = () => {
     return [...new Set(semestres)].sort((a, b) => a - b);
   }, [calificaciones]);
 
-  // Función para formatear la fecha - VERSIÓN CORREGIDA
+  // Función para formatear la fecha
   const formatearFecha = (fechaStr) => {
     console.log('🔍 Depuración formatearFecha - Input:', fechaStr, 'Tipo:', typeof fechaStr);
 
     if (!fechaStr) return "No especificada";
 
     try {
-      // Limpiar y estandarizar el formato de fecha
       let fechaLimpia = fechaStr.toString().trim();
 
-      // Si contiene 'T', tomar solo la parte de la fecha
       if (fechaLimpia.includes('T')) {
         fechaLimpia = fechaLimpia.split('T')[0];
       }
 
-      // Si contiene espacios, tomar solo la primera parte
       if (fechaLimpia.includes(' ')) {
         fechaLimpia = fechaLimpia.split(' ')[0];
       }
 
       console.log('🔍 Fecha limpia:', fechaLimpia);
 
-      // Validar formato YYYY-MM-DD
       const partes = fechaLimpia.split('-');
       if (partes.length !== 3) {
         console.warn('❌ Formato de fecha no válido:', fechaLimpia);
@@ -199,13 +183,11 @@ const AlumnoDetalle = () => {
 
       const [anio, mes, dia] = partes.map(Number);
 
-      // Validar números
       if (isNaN(anio) || isNaN(mes) || isNaN(dia)) {
         console.warn('❌ Componentes de fecha no numéricos:', { anio, mes, dia });
         return "Fecha inválida";
       }
 
-      // Crear fecha en hora local (evita problemas de zona horaria)
       const fecha = new Date(anio, mes - 1, dia);
 
       console.log('🔍 Fecha creada:', fecha);
@@ -230,12 +212,11 @@ const AlumnoDetalle = () => {
     }
   };
 
-  // Función para calcular la edad - VERSIÓN CORREGIDA
+  // Función para calcular la edad
   const calcularEdad = (fechaStr) => {
     if (!fechaStr) return null;
 
     try {
-      // Usar la misma lógica de limpieza que formatearFecha
       let fechaLimpia = fechaStr.toString().trim();
 
       if (fechaLimpia.includes('T')) {
@@ -248,28 +229,23 @@ const AlumnoDetalle = () => {
 
       const [anio, mes, dia] = fechaLimpia.split('-').map(Number);
 
-      // Crear fechas en hora local sin componente de tiempo
       const hoy = new Date();
       const nacimiento = new Date(anio, mes - 1, dia);
 
-      // Validar
       if (isNaN(nacimiento.getTime())) {
         console.warn('❌ Fecha de nacimiento inválida para cálculo de edad:', fechaStr);
         return null;
       }
 
-      // Calcular edad
       let edad = hoy.getFullYear() - nacimiento.getFullYear();
       const mesHoy = hoy.getMonth();
       const diaHoy = hoy.getDate();
 
-      // Ajustar si aún no ha pasado el cumpleaños este año
       if (mesHoy < nacimiento.getMonth() ||
         (mesHoy === nacimiento.getMonth() && diaHoy < nacimiento.getDate())) {
         edad--;
       }
 
-      // Validar edad razonable (entre 15 y 100 años)
       if (edad < 15 || edad > 100) {
         console.warn('❌ Edad calculada fuera de rango razonable:', edad);
         return null;
@@ -658,3 +634,4 @@ const AlumnoDetalle = () => {
 };
 
 export default AlumnoDetalle;
+

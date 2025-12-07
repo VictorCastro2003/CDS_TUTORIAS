@@ -1,7 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
 
 const AuthContext = createContext();
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://98.80.218.98:4000/api';
 
 export const useAuth = () => {
   return useContext(AuthContext);
@@ -12,90 +13,34 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    
-    // Configurar base URL
-    axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://98.80.218.98:4000/api';
-
-    if (token && userData) {
+    if (userData) {
       setUser(JSON.parse(userData));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
-    
     setLoading(false);
   }, []);
 
   // ==========================================
-  // INTERCEPTOR: Auto-renovación de tokens
-  // ==========================================
-  useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        const originalRequest = error.config;
-
-        // Si el token expiró (403/401) y NO hemos reintentado
-        if (
-          (error.response?.status === 403 || error.response?.status === 401) && 
-          !originalRequest._retry &&
-          originalRequest.url !== '/auth/login' // No reintentar en login
-        ) {
-          originalRequest._retry = true;
-
-          try {
-            const refreshToken = localStorage.getItem('refreshToken');
-            
-            if (!refreshToken) {
-              throw new Error('No refresh token disponible');
-            }
-
-            console.log('🔄 Access token expirado, renovando...');
-
-            // Llamar a /refresh
-            const { data } = await axios.post('/auth/refresh', { refreshToken });
-            
-            // Guardar nuevo access token
-            localStorage.setItem('token', data.accessToken || data.token);
-            axios.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken || data.token}`;
-
-            console.log('✅ Token renovado correctamente');
-
-            // Reintentar request original con nuevo token
-            originalRequest.headers.Authorization = `Bearer ${data.accessToken || data.token}`;
-            return axios(originalRequest);
-          } catch (refreshError) {
-            console.error('❌ Error al renovar token:', refreshError.message);
-            
-            // Si el refresh falló, hacer logout
-            logout();
-            window.location.href = '/login';
-            return Promise.reject(refreshError);
-          }
-        }
-
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      axios.interceptors.response.eject(interceptor);
-    };
-  }, []);
-
-  // ==========================================
-  // LOGIN - Con rememberMe
+  // LOGIN
   // ==========================================
   const login = async (name, password, rememberMe = false) => {
     try {
-      // 🔍 DEBUG: Ver qué se envía
       console.log('📤 Enviando al backend:', { name, password: '***', rememberMe });
 
-      const { data } = await axios.post('/auth/login', { 
-        name, 
-        password,
-        rememberMe  // ← Asegúrate que se envíe
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name, password, rememberMe })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error en login');
+      }
+
+      const data = await response.json();
 
       console.log('📥 Respuesta del backend:', {
         hasAccessToken: !!data.accessToken,
@@ -106,13 +51,12 @@ export const AuthProvider = ({ children }) => {
 
       const { token, accessToken, refreshToken, user: usuario, expiresIn } = data;
 
-      // Guardar ambos tokens
+      // Guardar tokens
       const finalAccessToken = accessToken || token;
       localStorage.setItem('token', finalAccessToken);
       localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user', JSON.stringify(usuario));
 
-      axios.defaults.headers.common['Authorization'] = `Bearer ${finalAccessToken}`;
       setUser(usuario);
 
       console.log(`✅ Login exitoso. Sesión válida por: ${expiresIn}`);
@@ -120,10 +64,8 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, user: usuario, token: finalAccessToken };
     } catch (error) {
-      const err = error.response?.data?.message || error.message || 'Error de conexión';
-      console.error('❌ Error en login:', err);
-      console.error('📋 Detalles del error:', error.response?.data);
-      return { success: false, error: err };
+      console.error('❌ Error en login:', error.message);
+      return { success: false, error: error.message };
     }
   };
 
@@ -135,20 +77,23 @@ export const AuthProvider = ({ children }) => {
       const refreshToken = localStorage.getItem('refreshToken');
       
       if (refreshToken) {
-        // Notificar al backend (no falla si hay error)
-        await axios.post('/auth/logout', { refreshToken }).catch((err) => {
+        await fetch(`${API_URL}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ refreshToken })
+        }).catch((err) => {
           console.warn('⚠️ Error al notificar logout al backend:', err.message);
         });
       }
     } catch (error) {
       console.error('Error en logout:', error);
     } finally {
-      // Limpiar todo del localStorage
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
       
-      delete axios.defaults.headers.common['Authorization'];
       setUser(null);
       
       console.log('🚪 Logout completado');

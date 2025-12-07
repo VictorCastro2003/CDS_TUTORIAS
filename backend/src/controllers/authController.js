@@ -6,9 +6,13 @@ import { User } from "../models/index.js";
 // FUNCIÓN AUXILIAR: Generar par de tokens
 // ==========================================
 const generateTokens = (user, rememberMe = false) => {
-  console.log('🎟️ Generando tokens con rememberMe:', rememberMe);
+  console.log('\n' + '='.repeat(60));
+  console.log('🎟️  GENERANDO TOKENS');
+  console.log('='.repeat(60));
+  console.log('👤 Usuario:', user.name);
+  console.log('🔐 RememberMe:', rememberMe);
 
-  // Access Token: siempre corto (15 minutos)
+  // Access Token: siempre corto (15 segundos para pruebas)
   const accessToken = jwt.sign(
     {
       id: user.id,
@@ -16,13 +20,20 @@ const generateTokens = (user, rememberMe = false) => {
       rol: user.rol
     },
     process.env.JWT_SECRET,
-    { expiresIn: '15m' }
+    { expiresIn: '30s' }  // ⏰ 15 SEGUNDOS para pruebas
   );
+
+  // Decodificar para ver cuándo expira
+  const accessDecoded = jwt.decode(accessToken);
+  const accessExpiresAt = new Date(accessDecoded.exp * 1000);
+  
+  console.log('✅ Access Token generado:');
+  console.log('   ⏰ Duración: 15 segundos');
+  console.log('   📅 Expira a las:', accessExpiresAt.toLocaleTimeString());
 
   // Refresh Token: varía según "recordar sesión"
   const refreshExpiresIn = rememberMe ? '30d' : '7d';
-  console.log(`🔄 Refresh token expirará en: ${refreshExpiresIn}`);
-
+  
   const refreshToken = jwt.sign(
     {
       id: user.id,
@@ -34,6 +45,15 @@ const generateTokens = (user, rememberMe = false) => {
     process.env.REFRESH_SECRET || process.env.JWT_SECRET,
     { expiresIn: refreshExpiresIn }
   );
+
+  // Decodificar para ver cuándo expira
+  const refreshDecoded = jwt.decode(refreshToken);
+  const refreshExpiresAt = new Date(refreshDecoded.exp * 1000);
+  
+  console.log('✅ Refresh Token generado:');
+  console.log('   ⏰ Duración:', refreshExpiresIn);
+  console.log('   📅 Expira el:', refreshExpiresAt.toLocaleDateString(), 'a las', refreshExpiresAt.toLocaleTimeString());
+  console.log('='.repeat(60) + '\n');
 
   return { accessToken, refreshToken };
 };
@@ -77,19 +97,21 @@ export const register = async (req, res) => {
 };
 
 // ==========================================
-// LOGIN - Con debugging
+// LOGIN - Con debugging detallado
 // ==========================================
 export const login = async (req, res) => {
   try {
     const { name, password, rememberMe } = req.body;
 
-    // 🔍 DEBUG
-    console.log('='.repeat(50));
+    console.log('\n' + '🔵'.repeat(30));
     console.log('🔐 LOGIN REQUEST');
-    console.log('📋 Body recibido:', { name, password: '***', rememberMe });
-    console.log('📋 RememberMe type:', typeof rememberMe);
-    console.log('📋 RememberMe value:', rememberMe);
-    console.log('='.repeat(50));
+    console.log('🔵'.repeat(30));
+    console.log('📋 Body recibido:');
+    console.log('   - Usuario:', name);
+    console.log('   - Contraseña: ***');
+    console.log('   - RememberMe:', rememberMe);
+    console.log('   - RememberMe type:', typeof rememberMe);
+    console.log('🔵'.repeat(30) + '\n');
 
     if (!name || !password) {
       return res.status(400).json({ message: "Name and password are required" });
@@ -108,6 +130,7 @@ export const login = async (req, res) => {
 
     console.log('✅ Login exitoso para:', name);
     console.log('📤 Enviando respuesta con expiresIn:', expiresIn);
+    console.log('\n');
 
     res.json({
       user: {
@@ -133,11 +156,17 @@ export const refresh = async (req, res) => {
   try {
     const { refreshToken } = req.body;
 
-    console.log('🔄 REFRESH REQUEST');
+    console.log('\n' + '🔄'.repeat(30));
+    console.log('🔄 REFRESH TOKEN REQUEST');
+    console.log('🔄'.repeat(30));
+    console.log('⏰ Hora actual:', new Date().toLocaleTimeString());
 
     if (!refreshToken) {
+      console.log('❌ No se recibió refresh token');
       return res.status(401).json({ message: 'Refresh token requerido' });
     }
+
+    console.log('✅ Refresh token recibido');
 
     // Verificar refresh token
     const decoded = jwt.verify(
@@ -145,9 +174,13 @@ export const refresh = async (req, res) => {
       process.env.REFRESH_SECRET || process.env.JWT_SECRET
     );
 
-    console.log('📋 Refresh token decodificado:', decoded);
+    console.log('📋 Refresh token decodificado:');
+    console.log('   - User ID:', decoded.id);
+    console.log('   - Type:', decoded.type);
+    console.log('   - Expira:', new Date(decoded.exp * 1000).toLocaleString());
 
     if (decoded.type !== 'refresh') {
+      console.log('❌ Token no es de tipo refresh');
       return res.status(403).json({ message: 'Token inválido' });
     }
 
@@ -157,8 +190,11 @@ export const refresh = async (req, res) => {
     });
 
     if (!user) {
+      console.log('❌ Usuario no encontrado');
       return res.status(403).json({ message: 'Usuario no existe' });
     }
+
+    console.log('✅ Usuario encontrado:', user.name);
 
     // Verificar si cambió la contraseña
     const userVersion = user.passwordChangedAt 
@@ -166,10 +202,13 @@ export const refresh = async (req, res) => {
       : 0;
     
     if (decoded.version < userVersion) {
+      console.log('❌ Contraseña fue cambiada, token inválido');
       return res.status(403).json({ 
         message: 'Token inválido: contraseña fue cambiada. Inicia sesión nuevamente.' 
       });
     }
+
+    console.log('✅ Versión del token válida');
 
     // Generar SOLO nuevo access token
     const newAccessToken = jwt.sign(
@@ -179,19 +218,29 @@ export const refresh = async (req, res) => {
         rol: user.rol
       },
       process.env.JWT_SECRET,
-      { expiresIn: '15m' }
+      { expiresIn: '15s' }  // ⏰ 15 SEGUNDOS para pruebas
     );
 
-    console.log('✅ Token renovado exitosamente');
+    const newDecoded = jwt.decode(newAccessToken);
+    const newExpiresAt = new Date(newDecoded.exp * 1000);
+
+    console.log('✅ NUEVO Access Token generado:');
+    console.log('   ⏰ Duración: 15 segundos');
+    console.log('   📅 Expira a las:', newExpiresAt.toLocaleTimeString());
+    console.log('🔄'.repeat(30) + '\n');
 
     res.json({ 
       accessToken: newAccessToken,
       token: newAccessToken // Para compatibilidad
     });
   } catch (error) {
-    console.error('❌ Error en refresh:', error);
+    console.error('\n❌ ERROR EN REFRESH:');
+    console.error('   Tipo:', error.name);
+    console.error('   Mensaje:', error.message);
+    console.log('\n');
     
     if (error.name === 'TokenExpiredError') {
+      console.log('⏰ Refresh token EXPIRADO');
       return res.status(403).json({ 
         message: 'Refresh token expirado. Inicia sesión nuevamente.' 
       });
@@ -207,8 +256,10 @@ export const refresh = async (req, res) => {
 // LOGOUT
 // ==========================================
 export const logout = async (req, res) => {
-  console.log('🚪 LOGOUT REQUEST');
-  // En versión stateless, logout es principalmente en cliente
+  console.log('\n🚪 LOGOUT REQUEST');
+  console.log('⏰ Hora:', new Date().toLocaleTimeString());
+  console.log('');
+  
   res.json({ 
     message: 'Sesión cerrada correctamente' 
   });

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
+import fetchWithAuth from '../utils/fetchWithAuth';
 
 import ModalCrearGrupo from '../components/modales/ModalCrearGrupo';
 import ModalEditarGrupo from '../components/modales/ModalEditarGrupo';
@@ -25,7 +26,7 @@ const GruposDashboard = () => {
   const [tutores, setTutores] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados de modales
+  // Modales
   const [showModalGrupo, setShowModalGrupo] = useState(false);
   const [showModalAsignarAlumnos, setShowModalAsignarAlumnos] = useState(false);
   const [showModalAsignarTutor, setShowModalAsignarTutor] = useState(false);
@@ -46,8 +47,8 @@ const GruposDashboard = () => {
   const [filtroCanalizaciones, setFiltroCanalizaciones] = useState('todas');
 
   const token = localStorage.getItem('token');
-  const API_BASE = 'http://98.80.218.98:4000/api';
 
+  // Carreras fijas
   const carreras = [
     "Ingeniería en Sistemas Computacionales",
     "Administración de Empresas",
@@ -55,6 +56,21 @@ const GruposDashboard = () => {
     "Ingeniería Mecatrónica"
   ];
 
+  // ---------------------------
+  // 🔥 FUNCIÓN REQUEST GLOBAL
+  // ---------------------------
+  const request = async (url, options = {}) => {
+    const response = await fetchWithAuth(url, options);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.message || "Error en la petición");
+    }
+    return response.json();
+  };
+
+  // ---------------------------
+  // CARGA INICIAL
+  // ---------------------------
   useEffect(() => {
     if (token) {
       const decoded = jwtDecode(token);
@@ -81,35 +97,17 @@ const GruposDashboard = () => {
     }
   }, [mostrarTodosAlumnos]);
 
-  const fetchWithAuth = async (url, options = {}) => {
-    const res = await fetch(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.message || 'Error en la petición');
-    }
-    return res.json();
-  };
-
+  // ---------------------------
+  // PETICIONES API
+  // ---------------------------
   const fetchPeriodos = async () => {
     try {
-      const data = await fetchWithAuth(`${API_BASE}/periodos`);
+      const data = await request('/periodos');
       setPeriodos(data);
 
       const activo = data.find(p => p.activo);
-      if (activo) {
-        setPeriodoSeleccionado(activo);
-      } else if (data.length > 0) {
-        setPeriodoSeleccionado(data[0]);
-      }
+      setPeriodoSeleccionado(activo || data[0]);
     } catch (error) {
-      console.error('Error cargando periodos:', error);
       Swal.fire('Error', 'No se pudieron cargar los periodos', 'error');
     } finally {
       setLoading(false);
@@ -121,7 +119,7 @@ const GruposDashboard = () => {
 
     try {
       setLoading(true);
-      const data = await fetchWithAuth(`${API_BASE}/grupos`);
+      const data = await request('/grupos');
       setGrupos(data);
     } catch (error) {
       Swal.fire('Error', 'No se pudieron cargar los grupos', 'error');
@@ -135,7 +133,7 @@ const GruposDashboard = () => {
       setLoadingEstadisticas(true);
       setShowModalEstadisticas(true);
 
-      const data = await fetchWithAuth(`${API_BASE}/grupos/${grupoId}/estadisticas`);
+      const data = await request(`/grupos/${grupoId}/estadisticas`);
       setEstadisticasGrupo(data);
     } catch (error) {
       Swal.fire('Error', 'No se pudieron cargar las estadísticas', 'error');
@@ -150,9 +148,8 @@ const GruposDashboard = () => {
       setLoadingEstadisticas(true);
       setShowModalEstadisticasGenerales(true);
 
-      // Usar la misma lógica que Dashboard.jsx
-      const data = await fetchWithAuth(`${API_BASE}/estadisticas`);
-      setEstadisticasGrupo(data); // Reutilizar el mismo estado
+      const data = await request('/estadisticas');
+      setEstadisticasGrupo(data);
     } catch (error) {
       Swal.fire('Error', 'No se pudieron cargar las estadísticas', 'error');
       setShowModalEstadisticasGenerales(false);
@@ -163,7 +160,7 @@ const GruposDashboard = () => {
 
   const fetchTutores = async () => {
     try {
-      const data = await fetchWithAuth(`${API_BASE}/users/tutores`);
+      const data = await request('/users/tutores');
       setTutores(data);
     } catch (error) {
       console.error('Error al cargar tutores:', error);
@@ -172,7 +169,7 @@ const GruposDashboard = () => {
 
   const fetchAlumnosGrupo = async (grupoId) => {
     try {
-      const data = await fetchWithAuth(`${API_BASE}/grupos/${grupoId}/alumnos`);
+      const data = await request(`/grupos/${grupoId}/alumnos`);
       setAlumnosGrupo(data);
       setSelectedGrupo(grupoId);
     } catch (error) {
@@ -185,13 +182,13 @@ const GruposDashboard = () => {
       const grupo = grupos.find(g => g.id === grupoId);
       if (!grupo) return;
 
-      let url = `${API_BASE}/grupos/${grupoId}/alumnos-disponibles`;
+      let url = `/grupos/${grupoId}/alumnos-disponibles`;
 
       if (!mostrarTodosAlumnos) {
         url += `?semestre=${grupo.semestre}&carrera=${encodeURIComponent(grupo.carrera)}`;
       }
 
-      const data = await fetchWithAuth(url);
+      const data = await request(url);
       setAlumnosDisponibles(data);
       setSearchAlumno('');
     } catch (error) {
@@ -202,7 +199,7 @@ const GruposDashboard = () => {
   const handleEliminarGrupo = async (grupoId, nombreGrupo) => {
     const result = await Swal.fire({
       title: '¿Eliminar grupo?',
-      html: `¿Estás seguro de eliminar el grupo <strong>${nombreGrupo}</strong>?<br>Esta acción no se puede deshacer.`,
+      html: `¿Estás seguro de eliminar el grupo <strong>${nombreGrupo}</strong>? Esta acción no se puede deshacer.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Sí, eliminar',
@@ -212,10 +209,9 @@ const GruposDashboard = () => {
 
     if (result.isConfirmed) {
       try {
-        await fetchWithAuth(`${API_BASE}/grupos/${grupoId}`, {
-          method: 'DELETE'
-        });
+        await request(`/grupos/${grupoId}`, { method: 'DELETE' });
         Swal.fire('¡Eliminado!', 'El grupo fue eliminado correctamente', 'success');
+
         fetchGrupos();
         if (selectedGrupo === grupoId) {
           setSelectedGrupo(null);
@@ -236,7 +232,7 @@ const GruposDashboard = () => {
 
   const handleAsignarAlumno = async (alumnoId) => {
     try {
-      await fetchWithAuth(`${API_BASE}/grupos/${selectedGrupo}/alumnos`, {
+      await request(`/grupos/${selectedGrupo}/alumnos`, {
         method: 'POST',
         body: JSON.stringify({ alumnoId })
       });
@@ -255,15 +251,13 @@ const GruposDashboard = () => {
       title: '¿Remover alumno?',
       html: `¿Deseas remover a <strong>${nombreAlumno}</strong> de este grupo?`,
       icon: 'warning',
-      showCancelButton: true,
       confirmButtonText: 'Sí, remover',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#d33'
+      showCancelButton: true
     });
 
     if (result.isConfirmed) {
       try {
-        await fetchWithAuth(`${API_BASE}/grupos/${selectedGrupo}/alumnos/${alumnoId}`, {
+        await request(`/grupos/${selectedGrupo}/alumnos/${alumnoId}`, {
           method: 'DELETE'
         });
 
@@ -279,25 +273,18 @@ const GruposDashboard = () => {
   const handleEliminarAlumno = async (alumnoId, nombreAlumno) => {
     const result = await Swal.fire({
       title: '¿Eliminar alumno?',
-      html: `¿Estás seguro de eliminar a <strong>${nombreAlumno}</strong> del sistema?<br><span class="text-danger">Esta acción eliminará también sus calificaciones y asignaciones.</span>`,
+      html: `¿Eliminar a <strong>${nombreAlumno}</strong> del sistema?`,
       icon: 'warning',
-      showCancelButton: true,
       confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#d33'
+      showCancelButton: true
     });
 
     if (result.isConfirmed) {
       try {
-        await fetchWithAuth(`${API_BASE}/alumnos/${alumnoId}`, {
-          method: 'DELETE'
-        });
+        await request(`/alumnos/${alumnoId}`, { method: 'DELETE' });
+        Swal.fire('¡Eliminado!', 'Alumno eliminado', 'success');
 
-        Swal.fire('¡Eliminado!', 'Alumno eliminado del sistema', 'success');
-
-        if (selectedGrupo) {
-          await fetchAlumnosGrupo(selectedGrupo);
-        }
+        if (selectedGrupo) fetchAlumnosGrupo(selectedGrupo);
         fetchGrupos();
       } catch (error) {
         Swal.fire('Error', error.message, 'error');
@@ -305,6 +292,7 @@ const GruposDashboard = () => {
     }
   };
 
+  // FILTRO DE ALUMNOS DISPONIBLES
   const alumnosFiltrados = alumnosDisponibles.filter(alumno =>
     `${alumno.Nombre} ${alumno.Primer_Ap} ${alumno.Segundo_Ap} ${alumno.Num_Control}`
       .toLowerCase()
@@ -314,6 +302,7 @@ const GruposDashboard = () => {
   const esPeriodoActivo = periodoSeleccionado?.activo;
   const puedeModificar = userRole === 'coordinacion' && esPeriodoActivo;
 
+  // LOADER
   if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
@@ -324,9 +313,13 @@ const GruposDashboard = () => {
     );
   }
 
+  // -------------------------------------------------------------------------
+  // ------------------------------ RENDER UI --------------------------------
+  // -------------------------------------------------------------------------
   return (
     <div className="container-fluid py-4">
-      {/* Header reorganizado */}
+
+      {/* HEADER */}
       <div className="row mb-3">
         <div className="col-md-12">
           <h2 className="fw-bold text-white mb-2">
@@ -336,8 +329,8 @@ const GruposDashboard = () => {
         </div>
       </div>
 
+      {/* SELECTOR DE PERIODO + BOTONES */}
       <div className="row mb-3">
-        {/* Selector de Periodo */}
         <div className="col-md-7">
           <div className="card shadow-sm">
             <div className="card-body py-2">
@@ -363,6 +356,7 @@ const GruposDashboard = () => {
                     ))}
                   </select>
                 </div>
+
                 <div className="col-md-7">
                   {periodoSeleccionado && (
                     <div>
@@ -382,7 +376,7 @@ const GruposDashboard = () => {
           </div>
         </div>
 
-        {/* Botones principales */}
+        {/* BOTONES */}
         <div className="col-md-5">
           <div className="row g-2">
             {puedeModificar && (
@@ -392,6 +386,7 @@ const GruposDashboard = () => {
                     <i className="fas fa-plus-circle me-1"></i>Crear Grupo
                   </button>
                 </div>
+
                 <div className="col-6">
                   <button className="btn btn-success btn-sm w-100" onClick={() => setShowModalAgregarAlumno(true)}>
                     <i className="fas fa-user-plus me-1"></i>Agregar Alumno
@@ -423,7 +418,7 @@ const GruposDashboard = () => {
             {puedeModificar && (
               <div className="col-12">
                 <button className="btn btn-danger btn-sm w-100" onClick={() => setShowModalCerrarPeriodo(true)}>
-                  <i className="fas fa-calendar-times me-1"></i>Cerrar Período
+                  <i className="fas fa-calendar-times me-1"></i>Cerrar Periodo
                 </button>
               </div>
             )}
@@ -431,8 +426,8 @@ const GruposDashboard = () => {
         </div>
       </div>
 
+      {/* LISTA DE GRUPOS */}
       <div className="row">
-        {/* Lista de Grupos */}
         <div className="col-md-4">
           <div className="card shadow-sm">
             <div className="card-header bg-primary text-white">
@@ -441,6 +436,7 @@ const GruposDashboard = () => {
                 {userRole === 'tutor' ? 'Mis Grupos' : 'Grupos del Periodo'}
               </h5>
             </div>
+
             <div className="card-body p-0">
               {grupos.length === 0 ? (
                 <div className="text-center py-5">
@@ -466,14 +462,14 @@ const GruposDashboard = () => {
                           <small className={selectedGrupo === grupo.id ? 'text-white-50' : 'text-muted'}>
                             {grupo.carrera}
                           </small>
+
                           <div className="mt-2">
-                            <span className={`badge ${selectedGrupo === grupo.id ? 'bg-light text-primary' : 'bg-primary'
-                              }`}>
+                            <span className={`badge ${selectedGrupo === grupo.id ? 'bg-light text-primary' : 'bg-primary'}`}>
                               {grupo.total_alumnos || 0} alumnos
                             </span>
+
                             {grupo.tutor && (
-                              <small className={`d-block mt-1 ${selectedGrupo === grupo.id ? 'text-white-50' : 'text-muted'
-                                }`}>
+                              <small className={`d-block mt-1 ${selectedGrupo === grupo.id ? 'text-white-50' : 'text-muted'}`}>
                                 <i className="fas fa-user-check me-1"></i>
                                 {grupo.tutor.name}
                               </small>
@@ -484,54 +480,46 @@ const GruposDashboard = () => {
                         {puedeModificar && (
                           <div className="d-flex flex-column gap-2">
                             <button
-                              className="btn btn-success"
+                              className="btn btn-success btn-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 verEstadisticasGrupo(grupo.id);
                               }}
-                              title="Ver estadísticas"
-                              style={{ padding: '8px 12px', fontSize: '0.875rem' }}
                             >
                               <i className="fas fa-chart-bar me-1"></i>
                               Estadísticas
                             </button>
 
                             <button
-                              className="btn btn-warning"
+                              className="btn btn-warning btn-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setGrupoEditar(grupo);
                                 setShowModalEditarGrupo(true);
                               }}
-                              title="Editar grupo"
-                              style={{ padding: '8px 12px', fontSize: '0.875rem' }}
                             >
                               <i className="fas fa-edit me-1"></i>
                               Editar
                             </button>
 
                             <button
-                              className="btn btn-info"
+                              className="btn btn-info btn-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setGrupoEditar(grupo);
                                 setShowModalAsignarTutor(true);
                               }}
-                              title="Asignar tutor"
-                              style={{ padding: '8px 12px', fontSize: '0.875rem' }}
                             >
                               <i className="fas fa-user-plus me-1"></i>
                               Tutor
                             </button>
 
                             <button
-                              className="btn btn-danger"
+                              className="btn btn-danger btn-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEliminarGrupo(grupo.id, grupo.nombre);
                               }}
-                              title="Eliminar grupo"
-                              style={{ padding: '8px 12px', fontSize: '0.875rem' }}
                             >
                               <i className="fas fa-trash me-1"></i>
                               Eliminar
@@ -547,7 +535,7 @@ const GruposDashboard = () => {
           </div>
         </div>
 
-        {/* Lista de Alumnos del Grupo */}
+        {/* LISTA DE ALUMNOS */}
         <div className="col-md-8">
           <div className="card shadow-sm">
             <div className="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
@@ -555,6 +543,7 @@ const GruposDashboard = () => {
                 <i className="fas fa-users me-2"></i>
                 Alumnos del Grupo
               </h5>
+
               {selectedGrupo && puedeModificar && (
                 <button
                   className="btn btn-sm btn-light"
@@ -565,6 +554,7 @@ const GruposDashboard = () => {
                 </button>
               )}
             </div>
+
             <div className="card-body">
               {!selectedGrupo ? (
                 <div className="text-center py-5">
@@ -575,6 +565,7 @@ const GruposDashboard = () => {
                 <div className="text-center py-5">
                   <i className="fas fa-user-times display-1 text-muted"></i>
                   <p className="mt-3 text-muted">Este grupo no tiene alumnos asignados</p>
+
                   {puedeModificar && (
                     <button
                       className="btn btn-primary mt-3"
@@ -598,6 +589,7 @@ const GruposDashboard = () => {
                         <th className="text-center">Acciones</th>
                       </tr>
                     </thead>
+
                     <tbody>
                       {alumnosGrupo.map((alumno, index) => (
                         <tr key={alumno.id}>
@@ -614,13 +606,12 @@ const GruposDashboard = () => {
                           <td>
                             <span className="badge bg-info">{alumno.Semestre}°</span>
                           </td>
+
                           <td>
                             <div className="d-flex gap-2 justify-content-center flex-wrap">
                               <button
-                                className="btn btn-primary"
+                                className="btn btn-primary btn-sm"
                                 onClick={() => navigate(`/alumnos/${alumno.id}`)}
-                                title="Ver detalles"
-                                style={{ padding: '6px 12px', fontSize: '0.875rem' }}
                               >
                                 <i className="fas fa-eye me-1"></i>
                                 Ver
@@ -629,39 +620,33 @@ const GruposDashboard = () => {
                               {puedeModificar && (
                                 <>
                                   <button
-                                    className="btn btn-warning"
+                                    className="btn btn-warning btn-sm"
                                     onClick={() => {
                                       setAlumnoEditar(alumno);
                                       setShowModalEditarAlumno(true);
                                     }}
-                                    title="Editar"
-                                    style={{ padding: '6px 12px', fontSize: '0.875rem' }}
                                   >
                                     <i className="fas fa-edit me-1"></i>
                                     Editar
                                   </button>
 
                                   <button
-                                    className="btn btn-danger"
+                                    className="btn btn-danger btn-sm"
                                     onClick={() => handleEliminarAlumno(
                                       alumno.id,
                                       `${alumno.Nombre} ${alumno.Primer_Ap} ${alumno.Segundo_Ap}`
                                     )}
-                                    title="Eliminar"
-                                    style={{ padding: '6px 12px', fontSize: '0.875rem' }}
                                   >
                                     <i className="fas fa-trash me-1"></i>
                                     Eliminar
                                   </button>
 
                                   <button
-                                    className="btn btn-secondary"
+                                    className="btn btn-secondary btn-sm"
                                     onClick={() => handleRemoverAlumno(
                                       alumno.id,
                                       `${alumno.Nombre} ${alumno.Primer_Ap}`
                                     )}
-                                    title="Remover del grupo"
-                                    style={{ padding: '6px 12px', fontSize: '0.875rem' }}
                                   >
                                     <i className="fas fa-user-minus me-1"></i>
                                     Remover
@@ -673,6 +658,7 @@ const GruposDashboard = () => {
                         </tr>
                       ))}
                     </tbody>
+
                   </table>
                 </div>
               )}
@@ -681,14 +667,14 @@ const GruposDashboard = () => {
         </div>
       </div>
 
-      {/* Modales */}
+      {/* ------------------------- MODALES ------------------------- */}
+
       <ModalCrearGrupo
         show={showModalGrupo}
         onClose={() => setShowModalGrupo(false)}
         periodoSeleccionado={periodoSeleccionado}
         carreras={carreras}
-        fetchWithAuth={fetchWithAuth}
-        API_BASE={API_BASE}
+        fetchWithAuth={request}
         onSuccess={fetchGrupos}
       />
 
@@ -700,8 +686,7 @@ const GruposDashboard = () => {
         }}
         grupo={grupoEditar}
         carreras={carreras}
-        fetchWithAuth={fetchWithAuth}
-        API_BASE={API_BASE}
+        fetchWithAuth={request}
         onSuccess={fetchGrupos}
       />
 
@@ -713,8 +698,7 @@ const GruposDashboard = () => {
         }}
         grupo={grupoEditar}
         tutores={tutores}
-        fetchWithAuth={fetchWithAuth}
-        API_BASE={API_BASE}
+        fetchWithAuth={request}
         onSuccess={fetchGrupos}
       />
 
@@ -737,8 +721,7 @@ const GruposDashboard = () => {
         show={showModalAgregarAlumno}
         onClose={() => setShowModalAgregarAlumno(false)}
         carreras={carreras}
-        fetchWithAuth={fetchWithAuth}
-        API_BASE={API_BASE}
+        fetchWithAuth={request}
       />
 
       <ModalEditarAlumno
@@ -749,12 +732,9 @@ const GruposDashboard = () => {
         }}
         alumno={alumnoEditar}
         carreras={carreras}
-        fetchWithAuth={fetchWithAuth}
-        API_BASE={API_BASE}
+        fetchWithAuth={request}
         onSuccess={() => {
-          if (selectedGrupo) {
-            fetchAlumnosGrupo(selectedGrupo);
-          }
+          if (selectedGrupo) fetchAlumnosGrupo(selectedGrupo);
         }}
       />
 
@@ -763,8 +743,7 @@ const GruposDashboard = () => {
         onClose={() => setShowModalCerrarPeriodo(false)}
         periodoSeleccionado={periodoSeleccionado}
         grupos={grupos}
-        fetchWithAuth={fetchWithAuth}
-        API_BASE={API_BASE}
+        fetchWithAuth={request}
         onSuccess={async (nuevoPeriodo) => {
           await fetchPeriodos();
           setPeriodoSeleccionado(nuevoPeriodo);
@@ -786,8 +765,7 @@ const GruposDashboard = () => {
         show={showModalCanalizaciones}
         onClose={() => setShowModalCanalizaciones(false)}
         grupos={grupos}
-        fetchWithAuth={fetchWithAuth}
-        API_BASE={API_BASE}
+        fetchWithAuth={request}
       />
 
       <ModalEstadisticas
@@ -798,10 +776,13 @@ const GruposDashboard = () => {
         }}
         estadisticas={estadisticasGrupo}
         loading={loadingEstadisticas}
-        esVistaGeneral={true} // Nuevo prop para distinguir
+        esVistaGeneral={true}
       />
+
     </div>
   );
 };
 
 export default GruposDashboard;
+
+

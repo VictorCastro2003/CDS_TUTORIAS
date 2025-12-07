@@ -20,16 +20,16 @@ const Login = () => {
     setMessage("");
     setMessageType("");
 
-    //DEBUG: Ver qué se está enviando
-    console.log('Intentando login con:', { name, rememberMe });
+    // 🔍 DEBUG: Ver qué se está enviando
+    console.log('🔐 Intentando login con:', { name, rememberMe });
 
     try {
       if (!auth) throw new Error('Auth no disponible');
       
-      //Pasar rememberMe al login
+      // ✅ Pasar rememberMe al login
       const res = await auth.login(name, password, rememberMe);
 
-      console.log('Respuesta del login:', res);
+      console.log('📦 Respuesta del login:', res);
 
       if (res.success) {
         const duracion = rememberMe ? '30 días' : '7 días';
@@ -50,7 +50,7 @@ const Login = () => {
         });
       }
     } catch (error) {
-      console.error('Error en login:', error);
+      console.error('❌ Error en login:', error);
       Swal.fire({ 
         icon: 'error', 
         title: 'Error', 
@@ -113,7 +113,7 @@ const Login = () => {
                 onChange={(e) => {
                   const checked = e.target.checked;
                   setRememberMe(checked);
-                  console.log('Checkbox cambiado a:', checked); // ← DEBUG
+                  console.log('☑️ Checkbox cambiado a:', checked); // ← DEBUG
                 }}
                 disabled={isSubmitting}
               />
