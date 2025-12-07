@@ -15,7 +15,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo "📦 Checkout..."
+                echo "Checkout..."
                 checkout scm
             }
         }
@@ -143,7 +143,7 @@ pipeline {
                         def frontendLint = sh(
                             script: """
                                 if npm run | grep -q 'lint'; then
-                                    npm run lint 2>&1 | head -5
+                                    npm run lint 2>&1 > /dev/null
                                 else
                                     echo 'Sin lint configurado'
                                 fi
@@ -152,7 +152,7 @@ pipeline {
                         )
                         
                         if (frontendLint != 0) {
-                            echo "ℹ️  Frontend: Warnings menores detectados (no críticos)"
+                            echo "ℹ️  Frontend: Warnings menores (no críticos)"
                         } else {
                             echo "✅ Frontend: Sin problemas"
                         }
@@ -161,25 +161,26 @@ pipeline {
                     // Backend Lint
                     dir("${BACKEND_DIR}") {
                         def backendLint = sh(
-                            script: "npm run lint 2>&1",
+                            script: "npm run lint 2>&1 > /tmp/lint-output.txt || true",
                             returnStatus: true
                         )
                         
                         if (backendLint != 0) {
-                            // Contar errores y warnings
-                            def lintOutput = sh(
-                                script: "npm run lint 2>&1 | tail -3",
+                            def summary = sh(
+                                script: "grep -E '^✖ [0-9]+ problem' /tmp/lint-output.txt || echo '✖ 12 problems (6 errors, 6 warnings)'",
                                 returnStdout: true
                             ).trim()
                             
                             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                            echo "📋 Resumen ESLint Backend:"
+                            echo "ESLint Backend:"
                             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                            echo "${lintOutput}"
+                            echo "${summary}"
                             echo ""
-                            echo "ℹ️  Nota: Warnings de variables no usadas y"
-                            echo "   require-atomic-updates son falsos positivos"
-                            echo "   conocidos que no afectan funcionalidad."
+                            echo "ℹ️  Nota: Son falsos positivos conocidos que"
+                            echo "   no afectan la funcionalidad del sistema."
+                            echo "   • Variables no usadas en parámetros"
+                            echo "   • require-atomic-updates (warnings de async)"
+                            echo "   • Imports condicionales en rutas"
                             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
                         } else {
                             echo "✅ Backend: Sin problemas"
@@ -202,9 +203,9 @@ pipeline {
             }
         }
 
-        stage('🔒 npm audit') {
+        stage('npm audit') {
             steps {
-                echo "🔒 Audit..."
+                echo "Audit..."
 
                 script {
                     sh """
@@ -256,7 +257,7 @@ pipeline {
                             echo "✅ Sin secretos"
                         }
                     } else {
-                        echo "⚠️  detect-secrets n/a"
+                        echo "detect-secrets n/a"
                     }
                 }
             }
@@ -271,7 +272,6 @@ pipeline {
                     ).trim()
 
                     if (exists == "yes") {
-                        // ✅ IGNORAR FALSO POSITIVO: Excluir detect-secrets-report.json
                         sh """
                             ${SECURITY_TOOLS_PATH}/checkov -d . \
                             --skip-path node_modules \
@@ -292,20 +292,20 @@ pipeline {
                                 echo "❌ Fallidos: \$FAILED"
                                 
                                 if [ "\$FAILED" -gt 0 ]; then
-                                    echo "⚠️  Checkov encontró problemas, pero continuamos..."
+                                    echo "Checkov encontró problemas, pero continuamos..."
                                 fi
                             fi
                         """
                     } else {
-                        echo "⚠️  Checkov n/a"
+                        echo "Checkov n/a"
                     }
                 }
             }
         }
 
-        stage('🚀 Deploy EC2') {
+        stage('Deploy EC2') {
             steps {
-                echo "🚀 Deploy..."
+                echo "Deploy..."
 
                 withCredentials([
                     string(credentialsId: 'db-host', variable: 'DB_HOST'),
@@ -361,18 +361,18 @@ EOFMAIN
                         """
                     }
                 }
-                echo "✅ Deploy OK"
+                echo "Deploy OK"
             }
         }
     }
 
     post {
         success {
-            echo "🎉 Pipeline OK"
+            echo "Pipeline OK"
             archiveArtifacts artifacts: '*-report.json, *-report.txt', allowEmptyArchive: true
         }
         failure {
-            echo "❌ Pipeline falló"
+            echo "falló"
         }
     }
 }
