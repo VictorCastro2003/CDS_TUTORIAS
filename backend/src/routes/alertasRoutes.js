@@ -1,15 +1,24 @@
-// src/routes/auth.js
 import express from 'express';
-import authController from '../controllers/authController.js';
-import { register, login } from '../validators/authValidator.js';
-import verifyToken from '../middlewares/verifyToken.js'; // ← Asegúrate de importar
+import {
+  obtenerTodasAlertas,
+  obtenerAlertasAlumno,
+  crearAlerta,
+  actualizarEstadoAlerta
+} from '../controllers/alertaController.js';
+import verifyToken from '../middlewares/verifyToken.js';
 
 const router = express.Router();
 
-router.post('/register', register, authController.register);
-router.post('/login', login, authController.login);
-router.post('/refresh', authController.refresh);        // ← Agregar esta línea
-router.post('/logout', authController.logout);          // ← Agregar esta línea
-router.post('/change-password', verifyToken, authController.changePassword); // ← Agregar esta línea
+// ✅ Obtener todas las alertas (con filtros opcionales)
+router.get('/', verifyToken, obtenerTodasAlertas);
+
+// ✅ Obtener alertas de un alumno específico
+router.get('/alumno/:alumnoId', verifyToken, obtenerAlertasAlumno);
+
+// ✅ Crear nueva alerta
+router.post('/', verifyToken, crearAlerta);
+
+// ✅ Actualizar estado de alerta
+router.put('/:id/estado', verifyToken, actualizarEstadoAlerta);
 
 export default router;

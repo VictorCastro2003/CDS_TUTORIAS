@@ -1,6 +1,18 @@
-# En la raíz del proyecto
-backend/.env
+# Archivos de entorno
+.env
 *.env
-*-report.json
-*-report.txt
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Directorios
 node_modules/
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
