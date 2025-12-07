@@ -1,11 +1,15 @@
+// src/routes/auth.js
 import express from 'express';
-import * as alertaController from '../controllers/alertaController.js';
-import verificarToken from '../middlewares/auth.js';
+import authController from '../controllers/authController.js';
+import { register, login } from '../validators/authValidator.js';
+import verifyToken from '../middlewares/verifyToken.js'; // ← Asegúrate de importar
 
 const router = express.Router();
-router.get('/', verificarToken, alertaController.obtenerTodasAlertas);
-router.get('/alumno/:alumnoId', verificarToken, alertaController.obtenerAlertasAlumno);
-router.post('/', verificarToken, alertaController.crearAlerta);
-router.put('/:id/estado', verificarToken, alertaController.actualizarEstadoAlerta);
+
+router.post('/register', register, authController.register);
+router.post('/login', login, authController.login);
+router.post('/refresh', authController.refresh);        // ← Agregar esta línea
+router.post('/logout', authController.logout);          // ← Agregar esta línea
+router.post('/change-password', verifyToken, authController.changePassword); // ← Agregar esta línea
 
 export default router;

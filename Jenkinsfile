@@ -273,7 +273,8 @@ pipeline {
                 withCredentials([
                     string(credentialsId: 'db-host', variable: 'DB_HOST'),
                     string(credentialsId: 'db-password', variable: 'DB_PASS'),
-                    string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
+                    string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET'),
+                    string(credentialsId: 'jwt-secret2', variable: 'JWT_SECRET2')
                 ]) {
                     sshagent(credentials: ['ec2-jenkins-key']) {
                         sh """
@@ -302,6 +303,7 @@ DB_USER=uver4zyp7czemcjo
 DB_PASS=${DB_PASS}
 
 JWT_SECRET=${JWT_SECRET}
+REFRESH_SECRET=${JWT_SECRET2}
 JWT_EXPIRES_IN=7d
 EOFENV
 
