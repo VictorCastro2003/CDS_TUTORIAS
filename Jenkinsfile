@@ -15,7 +15,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo "Checkout..."
+                echo "📦 Checkout..."
                 checkout scm
             }
         }
@@ -160,21 +160,21 @@ pipeline {
 
                     // Backend Lint
                     dir("${BACKEND_DIR}") {
-                        def backendLint = sh(
-                            script: "npm run lint 2>&1 > /tmp/lint-output.txt || true",
-                            returnStatus: true
-                        )
+                        // Capturar salida completa pero mostrar solo resumen
+                        def lintOutput = sh(
+                            script: "npm run lint 2>&1 || true",
+                            returnStdout: true
+                        ).trim()
                         
-                        if (backendLint != 0) {
-                            def summary = sh(
-                                script: "grep -E '^✖ [0-9]+ problem' /tmp/lint-output.txt || echo '✖ 12 problems (6 errors, 6 warnings)'",
-                                returnStdout: true
-                            ).trim()
-                            
+                        // Buscar la línea del resumen
+                        def lines = lintOutput.split('\n')
+                        def summaryLine = lines.find { it =~ /^✖ \d+ problem/ }
+                        
+                        if (summaryLine) {
                             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                            echo "ESLint Backend:"
+                            echo "📋 ESLint Backend:"
                             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                            echo "${summary}"
+                            echo "${summaryLine}"
                             echo ""
                             echo "ℹ️  Nota: Son falsos positivos conocidos que"
                             echo "   no afectan la funcionalidad del sistema."
@@ -203,9 +203,9 @@ pipeline {
             }
         }
 
-        stage('npm audit') {
+        stage('🔒 npm audit') {
             steps {
-                echo "Audit..."
+                echo "🔒 Audit..."
 
                 script {
                     sh """
@@ -257,7 +257,7 @@ pipeline {
                             echo "✅ Sin secretos"
                         }
                     } else {
-                        echo "detect-secrets n/a"
+                        echo "⚠️  detect-secrets n/a"
                     }
                 }
             }
@@ -272,6 +272,7 @@ pipeline {
                     ).trim()
 
                     if (exists == "yes") {
+                        // ✅ IGNORAR FALSO POSITIVO: Excluir detect-secrets-report.json
                         sh """
                             ${SECURITY_TOOLS_PATH}/checkov -d . \
                             --skip-path node_modules \
@@ -292,20 +293,20 @@ pipeline {
                                 echo "❌ Fallidos: \$FAILED"
                                 
                                 if [ "\$FAILED" -gt 0 ]; then
-                                    echo "Checkov encontró problemas, pero continuamos..."
+                                    echo "⚠️  Checkov encontró problemas, pero continuamos..."
                                 fi
                             fi
                         """
                     } else {
-                        echo "Checkov n/a"
+                        echo "⚠️  Checkov n/a"
                     }
                 }
             }
         }
 
-        stage('Deploy EC2') {
+        stage('🚀 Deploy EC2') {
             steps {
-                echo "Deploy..."
+                echo "🚀 Deploy..."
 
                 withCredentials([
                     string(credentialsId: 'db-host', variable: 'DB_HOST'),
@@ -361,18 +362,18 @@ EOFMAIN
                         """
                     }
                 }
-                echo "Deploy OK"
+                echo "✅ Deploy OK"
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline OK"
+            echo "🎉 Pipeline OK"
             archiveArtifacts artifacts: '*-report.json, *-report.txt', allowEmptyArchive: true
         }
         failure {
-            echo "falló"
+            echo "❌ Pipeline falló"
         }
     }
 }
