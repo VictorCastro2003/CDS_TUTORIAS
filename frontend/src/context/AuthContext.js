@@ -1,8 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import axios from 'axios';
 
 const AuthContext = createContext();
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://98.80.218.98:4000/api';
 
 export const useAuth = () => {
   return useContext(AuthContext);
@@ -13,91 +12,41 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    if (userData) {
+    // ensure axios uses backend API base
+    axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://98.80.218.98:4000/api';
+
+    if (token && userData) {
       setUser(JSON.parse(userData));
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
+    
     setLoading(false);
   }, []);
 
-  // ==========================================
-  // LOGIN
-  // ==========================================
-  const login = async (name, password, rememberMe = false) => {
+  const login = async (name, password) => {
     try {
-      console.log('📤 Enviando al backend:', { name, password: '***', rememberMe });
+      const { data } = await axios.post('/auth/login', { name, password });
+      const { token, user: usuario } = data;
 
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name, password, rememberMe })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error en login');
-      }
-
-      const data = await response.json();
-
-      console.log('📥 Respuesta del backend:', {
-        hasAccessToken: !!data.accessToken,
-        hasToken: !!data.token,
-        hasRefreshToken: !!data.refreshToken,
-        expiresIn: data.expiresIn
-      });
-
-      const { token, accessToken, refreshToken, user: usuario, expiresIn } = data;
-
-      // Guardar tokens
-      const finalAccessToken = accessToken || token;
-      localStorage.setItem('token', finalAccessToken);
-      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(usuario));
-
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(usuario);
 
-      console.log(`✅ Login exitoso. Sesión válida por: ${expiresIn}`);
-      console.log('💾 Tokens guardados en localStorage');
-
-      return { success: true, user: usuario, token: finalAccessToken };
+      return { success: true, user: usuario, token };
     } catch (error) {
-      console.error('❌ Error en login:', error.message);
-      return { success: false, error: error.message };
+      const err = error.response?.data?.message || error.message || 'Error de conexión';
+      return { success: false, error: err };
     }
   };
 
-  // ==========================================
-  // LOGOUT
-  // ==========================================
-  const logout = async () => {
-    try {
-      const refreshToken = localStorage.getItem('refreshToken');
-      
-      if (refreshToken) {
-        await fetch(`${API_URL}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ refreshToken })
-        }).catch((err) => {
-          console.warn('⚠️ Error al notificar logout al backend:', err.message);
-        });
-      }
-    } catch (error) {
-      console.error('Error en logout:', error);
-    } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      
-      setUser(null);
-      
-      console.log('🚪 Logout completado');
-    }
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    delete axios.defaults.headers.common['Authorization'];
+    setUser(null);
   };
 
   const value = {
