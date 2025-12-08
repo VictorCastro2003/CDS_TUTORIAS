@@ -335,11 +335,10 @@ router.get("/:id/calificaciones",
 
       console.log('2. Total de relaciones encontradas:', relaciones.length);
       
-      if (relaciones.length === 0) {
-        return res.status(404).json({ 
-          error: 'No se encontraron materias asignadas' 
-        });
-      }
+     if (relaciones.length === 0) {
+  return res.json([]);
+}
+
 
       // Mapear con el ID correcto
       const calificaciones = relaciones.map(rel => {
