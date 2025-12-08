@@ -92,6 +92,7 @@ pipeline {
                 script {
                     echo "🧪 Tests unitarios frontend..."
                     dir("${FRONTEND_DIR}") {
+                        // ✅ CORRECCIÓN 1: Eliminar --testPathIgnorePatterns
                         def testResult = sh(
                             script: """
                                 export CI=false
@@ -115,9 +116,11 @@ pipeline {
                 script {
                     echo "🔗 Tests integración frontend..."
                     dir("${FRONTEND_DIR}") {
+                        // ✅ CORRECCIÓN 2: Buscar archivos con patrón más específico
                         def testResult = sh(
                             script: """
                                 export CI=false
+                                # Buscar solo archivos que terminen en integration.test.js
                                 npm test -- --testMatch='**/*integration.test.js' --passWithNoTests --watchAll=false 2>&1
                             """,
                             returnStatus: true
@@ -137,55 +140,24 @@ pipeline {
             steps {
                 echo "🔍 Lint..."
 
-                script {
-                    // Frontend Lint
-                    dir("${FRONTEND_DIR}") {
-                        def frontendLint = sh(
-                            script: """
-                                if npm run | grep -q 'lint'; then
-                                    npm run lint 2>&1 > /dev/null
-                                else
-                                    echo 'Sin lint configurado'
-                                fi
-                            """,
-                            returnStatus: true
-                        )
-                        
-                        if (frontendLint != 0) {
-                            echo "ℹ️  Frontend: Warnings menores (no críticos)"
-                        } else {
-                            echo "✅ Frontend: Sin problemas"
-                        }
-                    }
+                dir("${FRONTEND_DIR}") {
+                    sh """
+                        if npm run | grep -q 'lint'; then
+                            npm run lint || echo '⚠️  Warnings'
+                        else
+                            echo 'Sin lint'
+                        fi
+                    """
+                }
 
-                    // Backend Lint
-                    dir("${BACKEND_DIR}") {
-                        // Capturar salida completa pero mostrar solo resumen
-                        def lintOutput = sh(
-                            script: "npm run lint 2>&1 || true",
-                            returnStdout: true
-                        ).trim()
-                        
-                        // Buscar la línea del resumen
-                        def lines = lintOutput.split('\n')
-                        def summaryLine = lines.find { it =~ /^✖ \d+ problem/ }
-                        
-                        if (summaryLine) {
-                            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                            echo "📋 ESLint Backend:"
-                            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                            echo "${summaryLine}"
-                            echo ""
-                            echo "ℹ️  Nota: Son falsos positivos conocidos que"
-                            echo "   no afectan la funcionalidad del sistema."
-                            echo "   • Variables no usadas en parámetros"
-                            echo "   • require-atomic-updates (warnings de async)"
-                            echo "   • Imports condicionales en rutas"
-                            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                        } else {
-                            echo "✅ Backend: Sin problemas"
-                        }
-                    }
+                dir("${BACKEND_DIR}") {
+                    sh """
+                        if npm run | grep -q 'lint'; then
+                            npm run lint || echo '⚠️  Warnings'
+                        else
+                            echo 'Sin lint'
+                        fi
+                    """
                 }
             }
         }
@@ -272,29 +244,19 @@ pipeline {
                     ).trim()
 
                     if (exists == "yes") {
-                        // ✅ IGNORAR FALSO POSITIVO: Excluir detect-secrets-report.json
                         sh """
                             ${SECURITY_TOOLS_PATH}/checkov -d . \
                             --skip-path node_modules \
                             --skip-path build \
                             --skip-path dist \
-                            --skip-path detect-secrets-report.json \
-                            --skip-path checkov-report.json \
-                            --skip-path npm-audit-report.txt \
                             --output json \
                             --output-file checkov-report.json || true
                         """
                         
                         sh """
                             if [ -f checkov-report.json ]; then
-                                FAILED=\$(grep -o '"result": "FAILED"' checkov-report.json | wc -l)
-                                PASSED=\$(grep -o '"result": "PASSED"' checkov-report.json | wc -l)
-                                echo "✅ Pasados: \$PASSED"
-                                echo "❌ Fallidos: \$FAILED"
-                                
-                                if [ "\$FAILED" -gt 0 ]; then
-                                    echo "⚠️  Checkov encontró problemas, pero continuamos..."
-                                fi
+                                echo "Fallidos: \$(grep -o '\"result\": \"FAILED\"' checkov-report.json | wc -l)"
+                                echo "Pasados: \$(grep -o '\"result\": \"PASSED\"' checkov-report.json | wc -l)"
                             fi
                         """
                     } else {
@@ -311,8 +273,7 @@ pipeline {
                 withCredentials([
                     string(credentialsId: 'db-host', variable: 'DB_HOST'),
                     string(credentialsId: 'db-password', variable: 'DB_PASS'),
-                    string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET'),
-                    string(credentialsId: 'jwt-secret2', variable: 'JWT_SECRET2')
+                    string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
                 ]) {
                     sshagent(credentials: ['ec2-jenkins-key']) {
                         sh """
@@ -341,7 +302,6 @@ DB_USER=uver4zyp7czemcjo
 DB_PASS=${DB_PASS}
 
 JWT_SECRET=${JWT_SECRET}
-REFRESH_SECRET=${JWT_SECRET2}
 JWT_EXPIRES_IN=7d
 EOFENV
 
